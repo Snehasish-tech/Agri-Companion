@@ -56,65 +56,64 @@ const categories = ["All", "Cereals", "Vegetables", "Oilseeds", "Cash Crops", "P
 
 const fetchMarketPrices = async () => {
   try {
-    // Original API endpoint
     const apiUrl = "https://api.data.gov.in/resource/9ef2731d-91f2-4fd2-a055-14f777e43997";
     const apiKey = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
     const fullUrl = `${apiUrl}?api-key=${apiKey}&format=json&limit=1000&offset=0`;
-    
-    // Use CORS proxy to bypass restrictions
-    const proxyUrl = `https://allorigins.win/api/raw?url=${encodeURIComponent(fullUrl)}`;
 
-    console.log("📡 Fetching market prices via CORS proxy...");
+    // Strategy 1: AllOrigins (Most reliable recently)
+    // Using api.allorigins.win with a random query param to bypass their cache
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(fullUrl)}&_=${Date.now()}`;
+
+    console.log(`📡 Fetching live prices via AllOrigins...`);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(proxyUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(proxyUrl, {
+        method: "GET",
+        signal: controller.signal,
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.warn(`⚠️ Proxy returned HTTP ${response.status}`);
-      return [];
+      if (response.ok) {
+        const wrapper = await response.json();
+        // AllOrigins returns the stringified response in a 'contents' field
+        const data = typeof wrapper.contents === 'string' ? JSON.parse(wrapper.contents) : wrapper.contents;
+
+        if (data && data.records && Array.isArray(data.records) && data.records.length > 0) {
+          console.log(`✅ LIVE prices loaded: ${data.records.length} records`);
+
+          return data.records
+            .map((record: any) => ({
+              commodity: String(record.commodity || "").trim(),
+              modal_price: parseFloat(record.modal_price) || 0,
+              market: String(record.market || "").trim(),
+              state: String(record.state || "").trim(),
+              date: record.arrival_date || new Date().toLocaleDateString(),
+            }))
+            .filter((r: any) => r.modal_price > 0);
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ AllOrigins fetch failed, trying direct (local) fallback...");
     }
 
-    const data = await response.json();
-
-    if (data.records && Array.isArray(data.records) && data.records.length > 0) {
-      console.log(`✅ Live prices fetched: ${data.records.length} records`);
-
-      return data.records
-        .map((record: any) => ({
-          commodity: String(record.commodity || "").trim(),
-          modal_price: parseFloat(record.modal_price) || 0,
-          market: String(record.market || "").trim(),
-          state: String(record.state || "").trim(),
-          date: record.arrival_date || new Date().toLocaleDateString(),
-        }))
-        .filter((r: any) => r.modal_price > 0);
+    // Phase 2: Try direct fetch (In case user has CORS extension or is on localhost with dev server proxy)
+    try {
+      const directResponse = await fetch(fullUrl);
+      if (directResponse.ok) {
+        const data = await directResponse.json();
+        if (data.records) return data.records;
+      }
+    } catch (e) {
+      // Ignore direct fetch failure
     }
 
-    console.warn("⚠️ No records in API response");
     return [];
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-
-    if (errMsg.includes("AbortError") || errMsg.includes("timeout")) {
-      console.warn("⏱️ Market API timeout - network slow");
-    } else if (errMsg.includes("Failed to fetch") || errMsg.includes("NetworkError")) {
-      console.warn("🌐 Market API network error - check internet");
-    } else if (errMsg.includes("CORS")) {
-      console.warn("🔒 Market API CORS blocked");
-    } else {
-      console.warn("❌ Market API error:", errMsg);
-    }
-
+    console.error("❌ Market API logic error:", error);
     return [];
   }
 };
@@ -203,8 +202,23 @@ export default function MarketPrices() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-heading font-bold text-foreground">📊 Market Prices</h1>
-        <p className="text-sm text-muted-foreground mt-1">Live mandi prices across India</p>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-2xl font-heading font-bold text-foreground">📊 Market Prices</h1>
+          {!apiRecords || apiRecords.length === 0 ? (
+            <span className="text-xs bg-yellow-500/10 text-yellow-700 px-2 py-1 rounded-full border border-yellow-500/20">
+              Demo Prices
+            </span>
+          ) : (
+            <span className="text-xs bg-green-500/10 text-green-700 px-2 py-1 rounded-full border border-green-500/20">
+              Live Data
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          {!apiRecords || apiRecords.length === 0 
+            ? "Demo prices - Real-time API data will appear here"
+            : "Live mandi prices across India"}
+        </p>
       </div>
 
       {isLoading && (
