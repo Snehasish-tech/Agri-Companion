@@ -56,52 +56,53 @@ const categories = ["All", "Cereals", "Vegetables", "Oilseeds", "Cash Crops", "P
 
 const fetchMarketPrices = async () => {
   try {
-    // Try data.gov.in API first (India agricultural prices)
-    const apiUrl = "https://api.data.gov.in/resource/9ef2731d-91f2-4fd2-a055-14f777e43997";
-    const apiKey = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
-    
-    const url = `${apiUrl}?api-key=${apiKey}&format=json&limit=1000&offset=0`;
-    
+    // Use Supabase Edge Function to bypass CORS restrictions
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const functionUrl = `${supabaseUrl}/functions/v1/market-prices`;
+
+    console.log("📡 Calling market prices Edge Function...");
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
-    const response = await fetch(url, {
-      method: 'GET',
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+    const response = await fetch(functionUrl, {
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (!response.ok) {
-      console.warn(`Market API HTTP ${response.status}:`, response.statusText);
+      console.warn(`⚠️ Edge Function returned HTTP ${response.status}`);
       return [];
     }
-    
+
     const data = await response.json();
-    
+
     if (data.records && Array.isArray(data.records) && data.records.length > 0) {
-      console.log("✅ Live prices fetched:", data.records.length, "records");
-      
+      console.log(`✅ Live prices fetched: ${data.records.length} records`);
+
       // Map API data to our crop format
-      return data.records.map((record: any) => ({
-        commodity: String(record.commodity || '').trim(),
-        modal_price: parseFloat(record.modal_price) || 0,
-        market: String(record.market || '').trim(),
-        state: String(record.state || '').trim(),
-        date: record.arrival_date || new Date().toLocaleDateString(),
-      })).filter((r: any) => r.modal_price > 0); // Only valid prices
+      return data.records
+        .map((record: any) => ({
+          commodity: String(record.commodity || "").trim(),
+          modal_price: parseFloat(record.modal_price) || 0,
+          market: String(record.market || "").trim(),
+          state: String(record.state || "").trim(),
+          date: record.arrival_date || new Date().toLocaleDateString(),
+        }))
+        .filter((r: any) => r.modal_price > 0); // Only valid prices
     }
-    
+
     console.warn("⚠️ No records in API response");
     return [];
-    
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    
+
     // Distinguish between different error types
     if (errMsg.includes("AbortError") || errMsg.includes("timeout")) {
       console.warn("⏱️ Market API timeout - network slow");
@@ -112,7 +113,7 @@ const fetchMarketPrices = async () => {
     } else {
       console.warn("❌ Market API error:", errMsg);
     }
-    
+
     return [];
   }
 };
