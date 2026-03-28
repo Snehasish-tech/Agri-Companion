@@ -56,20 +56,23 @@ const categories = ["All", "Cereals", "Vegetables", "Oilseeds", "Cash Crops", "P
 
 const fetchMarketPrices = async () => {
   try {
-    // Use Supabase Edge Function to bypass CORS restrictions
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const functionUrl = `${supabaseUrl}/functions/v1/market-prices`;
+    // Original API endpoint
+    const apiUrl = "https://api.data.gov.in/resource/9ef2731d-91f2-4fd2-a055-14f777e43997";
+    const apiKey = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
+    const fullUrl = `${apiUrl}?api-key=${apiKey}&format=json&limit=1000&offset=0`;
+    
+    // Use CORS proxy to bypass restrictions
+    const proxyUrl = `https://allorigins.win/api/raw?url=${encodeURIComponent(fullUrl)}`;
 
-    console.log("📡 Calling market prices Edge Function...");
+    console.log("📡 Fetching market prices via CORS proxy...");
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(functionUrl, {
+    const response = await fetch(proxyUrl, {
       method: "GET",
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json",
       },
       signal: controller.signal,
     });
@@ -77,7 +80,7 @@ const fetchMarketPrices = async () => {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.warn(`⚠️ Edge Function returned HTTP ${response.status}`);
+      console.warn(`⚠️ Proxy returned HTTP ${response.status}`);
       return [];
     }
 
@@ -86,7 +89,6 @@ const fetchMarketPrices = async () => {
     if (data.records && Array.isArray(data.records) && data.records.length > 0) {
       console.log(`✅ Live prices fetched: ${data.records.length} records`);
 
-      // Map API data to our crop format
       return data.records
         .map((record: any) => ({
           commodity: String(record.commodity || "").trim(),
@@ -95,7 +97,7 @@ const fetchMarketPrices = async () => {
           state: String(record.state || "").trim(),
           date: record.arrival_date || new Date().toLocaleDateString(),
         }))
-        .filter((r: any) => r.modal_price > 0); // Only valid prices
+        .filter((r: any) => r.modal_price > 0);
     }
 
     console.warn("⚠️ No records in API response");
@@ -103,7 +105,6 @@ const fetchMarketPrices = async () => {
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
 
-    // Distinguish between different error types
     if (errMsg.includes("AbortError") || errMsg.includes("timeout")) {
       console.warn("⏱️ Market API timeout - network slow");
     } else if (errMsg.includes("Failed to fetch") || errMsg.includes("NetworkError")) {
