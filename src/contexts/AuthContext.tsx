@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         try {
-          await withTimeout(supabase.from("profiles").upsert(
+          await supabase.from("profiles").upsert(
             {
               user_id: data.user.id,
               full_name: fullName,
@@ -245,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               farm_size: profile?.farm_size ?? null,
             },
             { onConflict: "user_id" }
-          ));
+          );
         } catch {
           // Profile creation failed - but don't block signup
           console.warn("Profile creation failed, but signup completed");
