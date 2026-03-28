@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Users, MessageSquare, ThumbsUp, Share2, Search, Plus, X,
   TrendingUp, Leaf, Bug, CloudSun, Tractor, HelpCircle, Filter,
-  Heart, MessageCircle, Eye, Clock, ChevronDown, LogIn,
+  Heart, MessageCircle, Eye, Clock, ChevronDown, LogIn, Edit2, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +68,7 @@ export default function Community() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [newComment, setNewComment] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
 
   // New post form
@@ -75,6 +76,12 @@ export default function Community() {
   const [newContent, setNewContent] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [newTags, setNewTags] = useState("");
+
+  // Edit post form
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTags, setEditTags] = useState("");
 
   // Fetch posts from Supabase
   const { data: posts = [], isLoading } = useQuery({
@@ -206,6 +213,44 @@ export default function Community() {
     },
   });
 
+  // Edit post mutation
+  const editPostMutation = useMutation({
+    mutationFn: async (data: { postId: string; title: string; content: string; category: string; tags: string[] }) => {
+      const { error } = await supabase
+        .from("community_posts")
+        .update({
+          title: data.title,
+          content: data.content,
+          category: data.category,
+          tags: data.tags,
+        })
+        .eq("id", data.postId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
+      setShowEditDialog(false);
+      setSelectedPost(null);
+    },
+  });
+
+  // Delete post mutation
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const { error } = await supabase
+        .from("community_posts")
+        .delete()
+        .eq("id", postId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
+      setSelectedPost(null);
+    },
+  });
+
   const filteredPosts = posts
     .filter((p) => activeCategory === "all" || p.category === activeCategory)
     .filter(
@@ -252,6 +297,33 @@ export default function Community() {
       return;
     }
     likePostMutation.mutate(postId);
+  };
+
+  const handleOpenEdit = () => {
+    if (!selectedPost) return;
+    setEditTitle(selectedPost.title);
+    setEditContent(selectedPost.content);
+    setEditCategory(selectedPost.category);
+    setEditTags(selectedPost.tags.join(", "));
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedPost || !editTitle.trim() || !editContent.trim() || !editCategory) return;
+    editPostMutation.mutate({
+      postId: selectedPost.id,
+      title: editTitle,
+      content: editContent,
+      category: editCategory,
+      tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
+    });
+  };
+
+  const handleDeletePost = () => {
+    if (!selectedPost) return;
+    if (confirm("Are you sure you want to delete this post?")) {
+      deletePostMutation.mutate(selectedPost.id);
+    }
   };
 
   const getCategoryColor = (cat: string) => {
@@ -507,9 +579,23 @@ export default function Community() {
                   <span className="flex items-center gap-1.5 text-sm">
                     <Eye className="w-4 h-4" /> {selectedPost.views_count} Views
                   </span>
-                  <button className="flex items-center gap-1.5 text-sm hover:text-foreground transition-colors ml-auto">
-                    <Share2 className="w-4 h-4" /> Share
-                  </button>
+                  {user?.id === selectedPost.user_id && (
+                    <>
+                      <button
+                        onClick={handleOpenEdit}
+                        className="flex items-center gap-1.5 text-sm hover:text-foreground transition-colors ml-auto"
+                      >
+                        <Edit2 className="w-4 h-4" /> Edit
+                      </button>
+                      <button
+                        onClick={handleDeletePost}
+                        disabled={deletePostMutation.isPending}
+                        className="flex items-center gap-1.5 text-sm hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Comments */}
@@ -576,6 +662,55 @@ export default function Community() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Post Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Edit Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <Input placeholder="Post title..." value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            <Select value={editCategory} onValueChange={setEditCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories
+                  .filter((c) => c.id !== "all")
+                  .map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <Textarea
+              placeholder="Share your thoughts, questions, or tips..."
+              rows={5}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+            />
+            <Input placeholder="Tags (comma-separated)" value={editTags} onChange={(e) => setEditTags(e.target.value)} />
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSaveEdit}
+                disabled={editPostMutation.isPending}
+                className="flex-1 gradient-warm text-secondary-foreground border-0"
+              >
+                {editPostMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                onClick={() => setShowEditDialog(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
