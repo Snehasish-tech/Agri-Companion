@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Search, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Filter, IndianRupee, BarChart3, MapPin,
+  Filter, IndianRupee, BarChart3, MapPin, Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,15 +54,88 @@ const crops: CropPrice[] = [
 
 const categories = ["All", "Cereals", "Vegetables", "Oilseeds", "Cash Crops", "Pulses", "Spices"];
 
+const fetchMarketPrices = async () => {
+  try {
+    // Using data.gov.in API for real-time mandi prices
+    const apiUrl = "https://api.data.gov.in/resource/9ef2731d-91f2-4fd2-a055-14f777e43997";
+    const apiKey = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b"; // Public demo key
+    
+    const url = `${apiUrl}?api-key=${apiKey}&format=json&limit=500`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.warn("Market API call failed:", response.status);
+      return []; // Return empty array, fallback to mock data
+    }
+    
+    const data = await response.json();
+    
+    if (data.records && Array.isArray(data.records)) {
+      // Map API data to our crop format
+      return data.records.map((record: any) => ({
+        commodity: record.commodity || '',
+        modal_price: parseFloat(record.modal_price) || 0,
+        market: record.market || '',
+        state: record.state || '',
+        date: record.arrival_date || new Date().toLocaleDateString(),
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.warn("Market price fetch error:", error instanceof Error ? error.message : String(error));
+    // Silently fail and use mock data instead
+    return [];
+  }
+};
+
 export default function MarketPrices() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedCrop, setSelectedCrop] = useState<CropPrice | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "price" | "change">("change");
 
+  const { data: apiRecords, isLoading } = useQuery({
+    queryKey: ["marketPrices"],
+    queryFn: fetchMarketPrices,
+    refetchInterval: 3600000, // Refresh hourly
+  });
+
+  const liveCrops = useMemo(() => {
+    if (!apiRecords || apiRecords.length === 0) return crops;
+
+    return crops.map(c => {
+      // Match by cleaning names (e.g. "Rice (Basmati)" becomes "rice")
+      const cleanName = c.name.split("(")[0].trim().toLowerCase();
+      const live = apiRecords.find((r: any) => 
+        r.commodity.toLowerCase().includes(cleanName) || 
+        cleanName.includes(r.commodity.toLowerCase())
+      );
+      if (live) {
+        return {
+          ...c,
+          price: Number(live.modal_price) || c.price,
+          mandi: live.market,
+          state: live.state,
+        };
+      }
+      return c;
+    });
+  }, [apiRecords]);
+
   const filtered = useMemo(() => {
-    let result = crops.filter((c) => {
-      const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.nameHi.includes(search);
+    let result = liveCrops.filter((c) => {
+      const searchLower = search.toLowerCase();
+      const matchSearch = 
+        c.name.toLowerCase().includes(searchLower) || 
+        c.nameHi.includes(search) ||
+        c.state.toLowerCase().includes(searchLower);
       const matchCat = category === "All" || c.category === category;
       return matchSearch && matchCat;
     });
@@ -71,10 +145,10 @@ export default function MarketPrices() {
       return Math.abs(b.change24h) - Math.abs(a.change24h);
     });
     return result;
-  }, [search, category, sortBy]);
+  }, [liveCrops, search, category, sortBy]);
 
   // Ticker
-  const tickerItems = crops.filter((c) => c.change24h !== 0).map(
+  const tickerItems = liveCrops.filter((c) => c.change24h !== 0).map(
     (c) => `${c.emoji} ${c.name}: ₹${c.price.toLocaleString()} (${c.change24h > 0 ? "+" : ""}${c.change24h}%)`
   );
 
@@ -84,6 +158,13 @@ export default function MarketPrices() {
         <h1 className="text-2xl font-heading font-bold text-foreground">📊 Market Prices</h1>
         <p className="text-sm text-muted-foreground mt-1">Live mandi prices across India</p>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 text-xs text-primary mb-4 animate-pulse">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Updating live prices from Mandi...
+        </div>
+      )}
 
       {/* Ticker */}
       <div className="glass-card rounded-xl px-4 py-2 mb-6 overflow-hidden">
@@ -98,7 +179,12 @@ export default function MarketPrices() {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search crops..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input 
+            placeholder="Search by crop or state..." 
+            className="pl-10" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {categories.map((cat) => (
