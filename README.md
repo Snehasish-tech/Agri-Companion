@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="https://github.com/Snehasish-tech/Agri-Companion/assets/80269820/58320b1a-0553-425c-a1d2-8f4f1139c89d" alt="KrishiGrowAI Banner" width="180">
+  <img src="https://github.com/user-attachments/assets/13d1dba7-dc5b-49e1-b939-d5c8295f7ec3" alt="KrishiGrowAI Banner" width="90%">
 </p>
 
 <div align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=32&duration=2000&pause=400&color=22C55E&center=true&vCenter=true&width=1000&height=100&lines=%3E_%2B+INITIALIZING+KRISHIGROW+AI...;%3E_%2B+AI-POWERED+FARM+INTELLIGENCE+ONLINE;%3E_%2B+REACT+%2F+SUPABASE+POSTGRESQL+CONNECTED;%3E_%2B+GEMINI+CROP+ANALYSIS+PIPELINE+ACTIVE;%3E_%2B+OPENWEATHERMAP+HYPERLOCAL+FEEDS+READY;%3E_%2B+MANDI+PRICES+SYNCED+IN+REAL-TIME;%3E_%2B+EVERY+FIELD+HAS+A+STORY" alt="KrishiGrowAI Typing Animation" />
+<a href="https://github.com/your-username/krishigrow">
+  <img src="https://readme-typing-svg.demolab.com?font=Space+Grotesk&weight=700&size=35&duration=2500&pause=800&color=059669&center=true&vCenter=true&width=1000&height=100&lines=Welcome+to+KrishiGrow+AI;Smart+Farming+Powered+by+Gemini;Real-time+Weather+%26+Market+Insights;Your+Complete+Agri-Tech+Solution;Every+field+has+a+story." alt="KrishiGrowAI Professional" />
+</a>
 </div>
-
 <h3 align="center"><i>"Every Farmer Has a Story. Every Field Has Potential. We Make It Talk."</i></h3>
 
 <p align="center">
@@ -368,10 +369,10 @@ http://localhost:5173
 
 <div align="center">
 
-| 👨‍💻 Snehasish | 👨‍💻 Member 2 | 👨‍💻 Member 3 | 👨‍💻 Member 4 |
+| 👨‍💻 Snehasish | 👨‍💻 Saikat | 👨‍💻 Suvajit | 👨‍💻 Avijit |
 |:-------------:|:-------------:|:-------------:|:-------------:|
-| **Full Stack Developer** | **Backend Developer** | **DevOps Engineer** | **AI/ML Engineer** |
-| [![GitHub](https://img.shields.io/badge/GitHub-Snehasish-181717?style=flat&logo=github)](https://github.com/Snehasish-tech) | [![GitHub](https://img.shields.io/badge/GitHub-Member2-181717?style=flat&logo=github)](https://github.com) | [![GitHub](https://img.shields.io/badge/GitHub-Member3-181717?style=flat&logo=github)](https://github.com) | [![GitHub](https://img.shields.io/badge/GitHub-Member4-181717?style=flat&logo=github)](https://github.com) |
+
+| [![GitHub](https://img.shields.io/badge/GitHub-Snehasish-181717?style=flat&logo=github)](https://github.com/Snehasish-tech) | [![GitHub](https://img.shields.io/badge/GitHub-Saikat-181717?style=flat&logo=github)](https://github.com/SaikatPal1911) | [![GitHub](https://img.shields.io/badge/GitHub-Suvajit-181717?style=flat&logo=github)](https://github.com/Suvajit-Code) | [![GitHub](https://img.shields.io/badge/GitHub-Avijit-181717?style=flat&logo=github)](https://github.com/Avijit-workspace) |
 
 </div>
 
