@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import { useDashboardNotifications } from "@/hooks/useDashboardNotifications";
 import {
   Bot, CloudSun, TrendingUp, ShoppingCart, Warehouse, Handshake,
-  Wheat, ArrowRight, Bell, Users, BarChart3, Zap,
+  Wheat, ArrowRight, BarChart3, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -21,18 +22,25 @@ const quickActions = [
   { label: "Sell Direct", icon: Handshake, path: "/dashboard/sell", gradient: "gradient-warm" },
 ];
 
-const recentActivities = [
-  { text: "AI recommended Mustard for Rabi season", time: "2h ago", icon: Bot, color: "bg-primary/10 text-primary" },
-  { text: "Tomato prices up by 12% in Azadpur Mandi", time: "4h ago", icon: TrendingUp, color: "bg-success/10 text-success" },
-  { text: "Cold storage booking confirmed", time: "1d ago", icon: Warehouse, color: "bg-warning/10 text-warning" },
-  { text: "New order received — 50kg Organic Rice", time: "1d ago", icon: ShoppingCart, color: "bg-info/10 text-info" },
-  { text: "Weather alert: Heavy rain expected tomorrow", time: "2d ago", icon: CloudSun, color: "bg-destructive/10 text-destructive" },
-];
-
 export default function DashboardHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { notifications, loading: notificationsLoading, clearNotifications } = useDashboardNotifications(user?.id);
   const firstName = user?.full_name?.split(" ")[0] || "Farmer";
+
+  const getNotificationStyle = (type: string) => {
+    if (type === "community") {
+      return {
+        icon: TrendingUp,
+        color: "bg-success/10 text-success",
+      };
+    }
+
+    return {
+      icon: Warehouse,
+      color: "bg-warning/10 text-warning",
+    };
+  };
 
   return (
     <>
@@ -109,24 +117,44 @@ export default function DashboardHome() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold text-foreground">Notification History</h3>
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
+              onClick={clearNotifications}
+            >
               Clear all
             </Button>
           </div>
           <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 scrollbar-hide">
-            {recentActivities.map((activity, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.05 }}
-                className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-              >
-                <div className={`w-8 h-8 rounded-lg ${activity.color} flex items-center justify-center shrink-0 mt-0.5`}>
-                  <activity.icon className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-sm text-foreground leading-snug">{activity.text}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
-                </div>
-              </motion.div>
-            ))}
+            {notificationsLoading ? (
+              <div className="text-xs text-muted-foreground">Loading notification history...</div>
+            ) : notifications.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No activity yet.</div>
+            ) : (
+              notifications.map((activity, i) => {
+                const style = getNotificationStyle(activity.type);
+                const Icon = style.icon;
+                return (
+                  <motion.div
+                    key={activity.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => navigate(activity.href)}
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${style.color} flex items-center justify-center shrink-0 mt-0.5`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-foreground leading-snug">{activity.text}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </motion.div>
       </div>

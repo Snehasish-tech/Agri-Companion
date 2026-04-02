@@ -8,17 +8,12 @@ import {
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import { useDashboardNotifications } from "@/hooks/useDashboardNotifications";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-const mockNotifications = [
-  { id: 1, text: "AI recommended Mustard for Rabi season", time: "2h ago", color: "text-primary" },
-  { id: 2, text: "Tomato prices up by 12% in Azadpur", time: "4h ago", color: "text-success" },
-  { id: 3, text: "New order received — 50kg Organic Rice", time: "1d ago", color: "text-info" },
-];
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -43,6 +38,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { notifications, loading: notificationsLoading } = useDashboardNotifications(user?.id);
 
   const displayName = user?.full_name || user?.email || "User";
   const initials = (displayName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -158,7 +154,9 @@ export default function DashboardLayout() {
               <PopoverTrigger asChild>
                 <button className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-muted">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">3</span>
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
+                    {Math.min(notifications.length, 9)}
+                  </span>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-0" align="end">
@@ -167,12 +165,22 @@ export default function DashboardLayout() {
                   <button onClick={() => navigate("/dashboard")} className="text-[10px] text-primary hover:underline font-medium">View All</button>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
-                  {mockNotifications.map((n) => (
-                    <div key={n.id} className="p-4 border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer">
-                      <p className="text-xs text-foreground leading-snug">{n.text}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{n.time}</p>
-                    </div>
-                  ))}
+                  {notificationsLoading ? (
+                    <div className="p-4 text-xs text-muted-foreground">Loading notifications...</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-4 text-xs text-muted-foreground">No notifications yet.</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => navigate(n.href)}
+                        className="p-4 border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                      >
+                        <p className="text-xs text-foreground leading-snug">{n.text}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{n.time}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
