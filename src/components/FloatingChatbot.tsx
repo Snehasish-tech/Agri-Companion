@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, Sparkles, MessageCircle, X, Leaf, CloudSun, TrendingUp, Bug } from "lucide-react";
+import { Send, Bot, User, Loader2, MessageCircle, X, Leaf, CloudSun, TrendingUp, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -11,6 +11,7 @@ const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/farming-chat` : ""
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile";
+const AI_AVATAR_SRC = "/images/ai-avatar.jpeg";
 
 const quickReplies = [
   { label: "Best Rabi crops?", icon: Leaf },
@@ -21,6 +22,7 @@ const quickReplies = [
 
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: "Namaste! 🙏 I'm your AI farming assistant. Ask me anything about crops, weather, soil, prices, or farming techniques. How can I help you today?" },
   ]);
@@ -196,13 +198,22 @@ Guidelines:
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full gradient-hero flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+        className="fixed bottom-6 right-6 z-50 w-[72px] h-[72px] rounded-full bg-white dark:bg-slate-900 border-2 border-emerald-700 dark:border-emerald-500 ring-1 ring-emerald-700/55 dark:ring-emerald-500/55 flex items-center justify-center shadow-[0_0_22px_rgba(5,150,105,0.62),0_0_48px_rgba(5,150,105,0.36)] hover:shadow-[0_0_30px_rgba(5,150,105,0.78),0_0_64px_rgba(5,150,105,0.5)] transition-shadow overflow-hidden"
         aria-label="Toggle chatbot"
       >
         {isOpen ? (
           <X className="w-6 h-6 text-primary-foreground" />
         ) : (
-          <MessageCircle className="w-6 h-6 text-primary-foreground" />
+          avatarLoadFailed ? (
+            <MessageCircle className="w-6 h-6 text-primary-foreground" />
+          ) : (
+            <img
+              src={AI_AVATAR_SRC}
+              alt="Friendly robot avatar"
+              className="w-full h-full object-cover"
+              onError={() => setAvatarLoadFailed(true)}
+            />
+          )
         )}
       </motion.button>
 
@@ -218,8 +229,17 @@ Guidelines:
           >
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-border bg-gradient-to-r from-primary/10 to-transparent">
-              <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-accent" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-border bg-white dark:bg-slate-900 shrink-0 flex items-center justify-center">
+                {avatarLoadFailed ? (
+                  <Bot className="w-5 h-5 text-primary" />
+                ) : (
+                  <img
+                    src={AI_AVATAR_SRC}
+                    alt="KrishiAI robot avatar"
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarLoadFailed(true)}
+                  />
+                )}
               </div>
               <div className="flex-1">
                 <h2 className="text-sm font-heading font-bold text-foreground">KrishiAI Assistant</h2>
