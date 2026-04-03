@@ -100,6 +100,10 @@ const soilTypes = [
   { id: "clay", label: "Clay", emoji: "🫙", desc: "Heavy, compact" },
   { id: "loamy", label: "Loamy", emoji: "🌱", desc: "Ideal balance" },
   { id: "peaty", label: "Peaty", emoji: "🌿", desc: "Organic-rich" },
+  { id: "saline", label: "Saline", emoji: "🧂", desc: "Salt-affected" },
+  { id: "alkaline", label: "Alkaline", emoji: "⚪", desc: "High pH soil" },
+  { id: "rocky", label: "Rocky", emoji: "🪨", desc: "Shallow & coarse" },
+  { id: "silty", label: "Silty", emoji: "🌫️", desc: "Fine, smooth texture" },
 ];
 
 const waterOptions = [
@@ -261,6 +265,7 @@ export default function AIRecommendation() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaultForm);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(0);
@@ -272,6 +277,91 @@ export default function AIRecommendation() {
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  const handleAutoDetectToggle = useCallback(async () => {
+    const nextState = !form.autoDetect;
+    update("autoDetect", nextState);
+
+    if (!nextState) {
+      return;
+    }
+
+    if (!("geolocation" in navigator)) {
+      update("autoDetect", false);
+      toast({
+        title: "GPS not supported",
+        description: "Your browser does not support geolocation. Please enter location manually.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDetectingLocation(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 300000,
+        });
+      });
+
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const fallbackLocation = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+      let detectedLocation = fallbackLocation;
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          const addr = result?.address || {};
+          const city = addr.city || addr.town || addr.village || addr.county || "";
+          const state = addr.state || "";
+          const country = addr.country || "India";
+
+          if (city && state) {
+            detectedLocation = `${city}, ${state}`;
+          } else if (state) {
+            detectedLocation = `${state}, ${country}`;
+          }
+        }
+      } catch {
+        // Keep coordinate fallback when reverse geocoding fails.
+      }
+
+      update("location", detectedLocation);
+      toast({
+        title: "Location detected",
+        description: `Using ${detectedLocation} for recommendations.`,
+      });
+    } catch (error) {
+      update("autoDetect", false);
+      let message = "Could not detect your location. Please enter location manually.";
+
+      if (typeof error === "object" && error && "code" in error) {
+        const geolocationError = error as GeolocationPositionError;
+        if (geolocationError.code === 1) {
+          message = "Location permission denied. Please allow GPS access or enter location manually.";
+        } else if (geolocationError.code === 2) {
+          message = "Location unavailable. Please check network/GPS and try again.";
+        } else if (geolocationError.code === 3) {
+          message = "Location request timed out. Please try again or enter manually.";
+        }
+      }
+
+      toast({
+        title: "GPS detection failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setDetectingLocation(false);
+    }
+  }, [form.autoDetect, toast, update]);
 
   const canProceed = () => {
     switch (currentStep) {
@@ -757,7 +847,14 @@ export default function AIRecommendation() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.25 }}
           >
-            {currentStep === 0 && <StepLocation form={form} update={update} />}
+            {currentStep === 0 && (
+              <StepLocation
+                form={form}
+                update={update}
+                detectingLocation={detectingLocation}
+                onAutoDetectToggle={handleAutoDetectToggle}
+              />
+            )}
             {currentStep === 1 && <StepSoil form={form} update={update} />}
             {currentStep === 2 && <StepResources form={form} update={update} />}
             {currentStep === 3 && <StepPreferences form={form} update={update} />}
@@ -819,23 +916,36 @@ export default function AIRecommendation() {
 
 // ── Step Components ──
 
-function StepLocation({ form, update }: { form: FormData; update: <K extends keyof FormData>(k: K, v: FormData[K]) => void }) {
+function StepLocation({
+  form,
+  update,
+  detectingLocation,
+  onAutoDetectToggle,
+}: {
+  form: FormData;
+  update: <K extends keyof FormData>(k: K, v: FormData[K]) => void;
+  detectingLocation: boolean;
+  onAutoDetectToggle: () => void;
+}) {
   return (
     <div className="space-y-5">
       <button
-        onClick={() => update("autoDetect", !form.autoDetect)}
+        onClick={onAutoDetectToggle}
+        disabled={detectingLocation}
         className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
           form.autoDetect ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-        }`}
+        } ${detectingLocation ? "opacity-80 cursor-wait" : ""}`}
       >
         <div className={`w-10 h-10 rounded-lg ${form.autoDetect ? "bg-primary/15" : "bg-muted"} flex items-center justify-center`}>
-          <Locate className={`w-5 h-5 ${form.autoDetect ? "text-primary" : "text-muted-foreground"}`} />
+          <Locate className={`w-5 h-5 ${form.autoDetect ? "text-primary" : "text-muted-foreground"} ${detectingLocation ? "animate-pulse" : ""}`} />
         </div>
         <div className="text-left">
           <p className="font-medium text-sm text-foreground">Auto-detect my location</p>
-          <p className="text-xs text-muted-foreground">Use GPS to automatically find your farm location</p>
+          <p className="text-xs text-muted-foreground">
+            {detectingLocation ? "Detecting your location..." : "Use GPS to automatically find your farm location"}
+          </p>
         </div>
-        {form.autoDetect && <Check className="w-5 h-5 text-primary ml-auto" />}
+        {form.autoDetect && !detectingLocation && <Check className="w-5 h-5 text-primary ml-auto" />}
       </button>
 
       <div className="relative">
@@ -876,14 +986,6 @@ function StepSoil({ form, update }: { form: FormData; update: <K extends keyof F
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-muted/30 p-4">
-        <p className="text-sm text-foreground font-medium mb-1">No lab values needed</p>
-        <p className="text-xs text-muted-foreground">
-          You do not need pH or NPK values. AI recommendations will be generated using practical farm inputs like location,
-          soil type, season, water availability, and budget.
-        </p>
       </div>
     </div>
   );

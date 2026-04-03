@@ -295,9 +295,13 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("crop-recommend error:", e);
+
+    const errorMessage = e instanceof Error ? e.message : "Unknown error occurred";
+    const statusCode = errorMessage.toLowerCase().includes("rate limit") ? 429 : 500;
+
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: errorMessage }),
+      { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
