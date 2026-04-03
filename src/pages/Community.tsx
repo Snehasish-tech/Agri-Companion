@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Users, MessageSquare, Search, Plus, X, Check, Copy,
+  Users, MessageSquare, Search, Plus, X, Check,
   TrendingUp, Leaf, Bug, CloudSun, Tractor, HelpCircle, Filter,
   Heart, MessageCircle, Eye, Clock, LogIn, Edit2, Trash2, Share,
 } from "lucide-react";
@@ -312,11 +312,38 @@ export default function Community() {
           .insert([{ post_id: postId, user_id: user?.id }]);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
+    onMutate: async (postId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["communityPosts", user?.id] });
+
+      // Snapshot the previous value
+      const previousPosts = queryClient.getQueryData<Post[]>(["communityPosts", user?.id]) || [];
+
+      // Optimistically update the cache
+      const updatedPosts = previousPosts.map((p) => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            liked_by_user: !p.liked_by_user,
+            likes_count: p.liked_by_user ? p.likes_count - 1 : p.likes_count + 1,
+          };
+        }
+        return p;
+      });
+
+      queryClient.setQueryData(["communityPosts", user?.id], updatedPosts);
+
+      return { previousPosts };
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onSuccess: () => {
+      // Query is already updated via onMutate, no need to refetch
+    },
+    onError: (error: Error, _postId: string, context: any) => {
+      // Revert to previous data if mutation fails
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["communityPosts", user?.id], context.previousPosts);
+      }
+      toast({ title: "Error liking post", description: "Please try again", variant: "destructive" });
     },
   });
 
@@ -408,8 +435,64 @@ export default function Community() {
           .insert([{ comment_id: commentId, user_id: user?.id }]);
       }
     },
+    onMutate: async (commentId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["communityPosts", user?.id] });
+
+      // Snapshot the previous value
+      const previousPosts = queryClient.getQueryData<Post[]>(["communityPosts", user?.id]) || [];
+
+      // Optimistically update the selected post's comments
+      const updatedPosts = previousPosts.map((p) => {
+        if (p.id === selectedPost?.id) {
+          return {
+            ...p,
+            comments: p.comments.map((c) => {
+              if (c.id === commentId) {
+                return {
+                  ...c,
+                  liked_by_user: !c.liked_by_user,
+                  likes_count: c.liked_by_user ? c.likes_count - 1 : c.likes_count + 1,
+                };
+              }
+              return c;
+            }),
+          };
+        }
+        return p;
+      });
+
+      queryClient.setQueryData(["communityPosts", user?.id], updatedPosts);
+
+      // Also update selectedPost for immediate UI feedback
+      if (selectedPost) {
+        const updatedSelectedPost = {
+          ...selectedPost,
+          comments: selectedPost.comments.map((c) => {
+            if (c.id === commentId) {
+              return {
+                ...c,
+                liked_by_user: !c.liked_by_user,
+                likes_count: c.liked_by_user ? c.likes_count - 1 : c.likes_count + 1,
+              };
+            }
+            return c;
+          }),
+        };
+        setSelectedPost(updatedSelectedPost);
+      }
+
+      return { previousPosts };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
+      // Query is already updated via onMutate
+    },
+    onError: (error: Error, _commentId: string, context: any) => {
+      // Revert to previous data if mutation fails
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["communityPosts", user?.id], context.previousPosts);
+      }
+      toast({ title: "Error liking comment", description: "Please try again", variant: "destructive" });
     },
   });
 
@@ -552,46 +635,54 @@ export default function Community() {
     return postDate.toLocaleDateString();
   };
 
+  const getCategoryLabel = (cat: string) =>
+    categories.find((c) => c.id === cat)?.label || "General";
+
+  const totalComments = posts.reduce((sum, post) => sum + (post.comments?.length || 0), 0);
+  const helpPosts = posts.filter((post) => post.category === "help").length;
+
   // Suppress unused variable warning for useEffect
   void useEffect;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Community Forum</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+      <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-foreground">Community Forum</h1>
+            <p className="text-sm text-muted-foreground mt-1">
             {isAuthenticated
               ? "Connect, share, and learn from fellow farmers"
               : "Sign in to join the conversation"}
-          </p>
-        </div>
+            </p>
+          </div>
         {isAuthenticated ? (
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
-              <Button className="gradient-warm text-secondary-foreground border-0 hover:opacity-90 gap-2 h-10">
+              <Button className="gradient-warm text-secondary-foreground border-0 hover:opacity-90 gap-2 h-10 shadow-md">
                 <Plus className="w-4 h-4" /> New Post
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="font-heading text-xl">Share Your Knowledge</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
+              <div className="space-y-5 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                   <label className="text-sm font-medium mb-2 block">Post Title</label>
                   <Input
                     placeholder="What's on your mind?"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    className="border-2"
+                    className="border-2 bg-background"
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Category</label>
                   <Select value={newCategory} onValueChange={setNewCategory}>
-                    <SelectTrigger className="border-2">
+                    <SelectTrigger className="border-2 bg-background">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -605,6 +696,7 @@ export default function Community() {
                     </SelectContent>
                   </Select>
                 </div>
+                </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Description</label>
                   <Textarea
@@ -612,7 +704,7 @@ export default function Community() {
                     rows={5}
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
-                    className="border-2"
+                    className="border-2 bg-background resize-none"
                   />
                 </div>
                 <div>
@@ -621,7 +713,7 @@ export default function Community() {
                     placeholder="e.g., wheat, organic, rabi"
                     value={newTags}
                     onChange={(e) => setNewTags(e.target.value)}
-                    className="border-2"
+                    className="border-2 bg-background"
                   />
                 </div>
                 {newPostMedia.length > 0 && (
@@ -651,11 +743,13 @@ export default function Community() {
                     </div>
                   </div>
                 )}
-                <MediaUpload onMediaSelect={setNewPostMedia} selectedMedia={newPostMedia} maxFiles={5} />
+                <div className="rounded-xl border border-dashed border-border p-3 bg-muted/30">
+                  <MediaUpload onMediaSelect={setNewPostMedia} selectedMedia={newPostMedia} maxFiles={5} />
+                </div>
                 <Button
                   onClick={handleCreatePost}
                   disabled={createPostMutation.isPending}
-                  className="w-full gradient-warm text-secondary-foreground border-0 h-10"
+                  className="w-full gradient-warm text-secondary-foreground border-0 h-10 shadow-md"
                 >
                   {createPostMutation.isPending ? "Publishing..." : "Publish Post"}
                 </Button>
@@ -665,26 +759,41 @@ export default function Community() {
         ) : (
           <Button
             onClick={() => navigate("/auth")}
-            className="gradient-warm text-secondary-foreground border-0 gap-2 h-10"
+            className="gradient-warm text-secondary-foreground border-0 gap-2 h-10 shadow-md"
           >
             <LogIn className="w-4 h-4" /> Sign In to Post
           </Button>
         )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+          <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
+            <p className="text-xs text-muted-foreground">Total Posts</p>
+            <p className="text-xl font-semibold text-foreground">{posts.length}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
+            <p className="text-xs text-muted-foreground">Community Replies</p>
+            <p className="text-xl font-semibold text-foreground">{totalComments}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
+            <p className="text-xs text-muted-foreground">Help Requests</p>
+            <p className="text-xl font-semibold text-foreground">{helpPosts}</p>
+          </div>
+        </div>
       </div>
 
       {/* Search & Sort */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col lg:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search posts and tags..."
-            className="pl-9 border-2"
+            className="pl-9 border-2 bg-background"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-44 border-2">
+          <SelectTrigger className="w-full lg:w-56 border-2 bg-background">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
@@ -717,9 +826,14 @@ export default function Community() {
       {/* Posts Grid */}
       <div className="grid gap-4">
         {isLoading ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <div className="w-12 h-12 rounded-full gradient-hero animate-spin border-4 border-transparent border-t-primary mx-auto mb-3" />
-            <p className="font-medium">Loading community posts...</p>
+          <div className="grid gap-3">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="rounded-2xl border border-border p-5 animate-pulse">
+                <div className="h-4 w-40 bg-muted rounded mb-3" />
+                <div className="h-3 w-full bg-muted rounded mb-2" />
+                <div className="h-3 w-3/4 bg-muted rounded" />
+              </div>
+            ))}
           </div>
         ) : (
           <AnimatePresence>
@@ -730,11 +844,11 @@ export default function Community() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-card border-2 border-border rounded-xl p-6 hover:shadow-lg transition-all hover:scale-[1.01] cursor-pointer"
+                className="bg-card border border-border/70 rounded-2xl p-5 sm:p-6 hover:shadow-lg transition-all hover:-translate-y-0.5 cursor-pointer"
                 onClick={() => handleOpenPost(post)}
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full gradient-hero flex items-center justify-center text-primary-foreground font-heading font-bold text-sm shrink-0">
+                  <div className="w-12 h-12 rounded-full gradient-hero flex items-center justify-center text-primary-foreground font-heading font-bold text-sm shrink-0 shadow-sm">
                     {post.avatar}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -748,23 +862,34 @@ export default function Community() {
                     <h3 className="font-heading font-bold text-lg text-foreground mb-2 line-clamp-2">
                       {post.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
                       {post.content}
                     </p>
                     {post.media && post.media.length > 0 && (
-                      <div className="mb-4 max-h-48 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                        {post.media[0].type === "image" ? (
-                          <img src={post.media[0].url} alt="preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-48 bg-black flex items-center justify-center">
-                            <span className="text-white text-sm">Video attached</span>
-                          </div>
-                        )}
+                      <div className="mb-4 rounded-xl overflow-hidden border border-border/60 bg-muted/35">
+                        <div className="relative flex items-center justify-center bg-gradient-to-b from-muted/80 to-muted/40 p-2 sm:p-3">
+                          {post.media[0].type === "image" ? (
+                            <img
+                              src={post.media[0].url}
+                              alt="Post media preview"
+                              className="w-full max-h-[480px] object-contain rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-56 sm:h-72 bg-black rounded-lg flex items-center justify-center">
+                              <span className="text-white text-sm font-medium">Video attached</span>
+                            </div>
+                          )}
+                          {post.media.length > 1 && (
+                            <div className="absolute top-2 right-2 rounded-full bg-black/70 text-white text-xs px-2 py-1">
+                              +{post.media.length - 1} more
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     <div className="flex items-center gap-2 flex-wrap mb-4">
                       <Badge className={`${getCategoryColor(post.category)} border`}>
-                        {categories.find((c) => c.id === post.category)?.label}
+                        {getCategoryLabel(post.category)}
                       </Badge>
                       {post.tags.slice(0, 3).map((tag) => (
                         <span
@@ -775,14 +900,16 @@ export default function Community() {
                         </span>
                       ))}
                     </div>
-                    <div className="flex items-center gap-6 text-muted-foreground">
+                    <div className="flex items-center flex-wrap gap-2 text-muted-foreground border-t border-border/60 pt-4">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleLike(post.id);
                         }}
-                        className={`flex items-center gap-1.5 text-sm font-medium transition-all hover:scale-110 ${
-                          post.liked_by_user ? "text-red-500" : "hover:text-red-500"
+                        className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                          post.liked_by_user
+                            ? "text-red-500 border-red-200 bg-red-500/10"
+                            : "border-border bg-background hover:text-red-500 hover:border-red-200"
                         }`}
                       >
                         <Heart
@@ -790,10 +917,16 @@ export default function Community() {
                         />
                         {post.likes_count}
                       </button>
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenPost(post);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border border-border bg-background hover:border-primary/30 hover:text-foreground transition-colors"
+                      >
                         <MessageCircle className="w-4 h-4" /> {post.comments.length}
-                      </span>
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                      </button>
+                      <span className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border border-border bg-background">
                         <Eye className="w-4 h-4" /> {post.views_count}
                       </span>
                     </div>
@@ -875,7 +1008,7 @@ export default function Community() {
 
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge className={`${getCategoryColor(selectedPost.category)} border`}>
-                    {categories.find((c) => c.id === selectedPost.category)?.label}
+                    {getCategoryLabel(selectedPost.category)}
                   </Badge>
                   {selectedPost.tags.map((tag) => (
                     <span
