@@ -664,7 +664,7 @@ export default function Community() {
                 <Plus className="w-4 h-4" /> New Post
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl mx-4">
               <DialogHeader>
                 <DialogTitle className="font-heading text-xl">Share Your Knowledge</DialogTitle>
               </DialogHeader>
@@ -952,7 +952,7 @@ export default function Community() {
 
       {/* Post Detail Dialog */}
       <Dialog open={!!selectedPost} onOpenChange={(open) => !open && setSelectedPost(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl mx-4">
           {selectedPost && (
             <>
               <DialogHeader className="border-b pb-4">
@@ -1147,7 +1147,7 @@ export default function Community() {
 
       {/* Edit Post Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-full max-w-sm sm:max-w-lg mx-4">
           <DialogHeader>
             <DialogTitle className="font-heading">Edit Post</DialogTitle>
           </DialogHeader>

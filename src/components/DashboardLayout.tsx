@@ -212,7 +212,7 @@ export default function DashboardLayout() {
                   </span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
+              <PopoverContent className="w-full max-w-sm sm:w-80 p-0" align="end">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                   <h4 className="font-heading font-bold text-sm">Notifications</h4>
                   <button onClick={() => navigate("/dashboard")} className="text-[10px] text-primary hover:underline font-medium">View All</button>
@@ -247,7 +247,7 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="p-3 sm:p-4 lg:p-6">
+        <main className="p-3 sm:p-4 md:p-5 lg:p-6">
           <Outlet />
         </main>
       </div>

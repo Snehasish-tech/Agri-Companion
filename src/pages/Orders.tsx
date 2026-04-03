@@ -604,7 +604,7 @@ function OrderCard({
       </motion.div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
           <DialogHeader>
             <DialogTitle className="font-heading">
               {type === "order" ? "Order" : "Sale"} Details
