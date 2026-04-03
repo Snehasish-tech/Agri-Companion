@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [getFallbackName]);
 
-  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs = 8000): Promise<T> => {
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs = 3500): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -131,6 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
 
         if (data.session?.user) {
+          // Render quickly with fallback profile; hydrate full profile in background.
+          if (mounted) {
+            setUser(mapAuthUserFallback(data.session.user));
+            setLoading(false);
+          }
+
           try {
             await withTimeout(ensureProfile(data.session.user));
           } catch {
@@ -156,6 +162,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (session?.user) {
+          // Keep previous avatar for the same user to avoid initials flicker on token refresh.
+          setUser((prev) => {
+            const fallback = mapAuthUserFallback(session.user);
+            if (prev && prev.id === session.user.id) {
+              return {
+                ...fallback,
+                avatar_url: prev.avatar_url ?? fallback.avatar_url,
+              };
+            }
+            return fallback;
+          });
+
           try {
             await withTimeout(ensureProfile(session.user));
           } catch {
@@ -169,7 +187,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         if (session?.user) {
-          setUser(mapAuthUserFallback(session.user));
+          setUser((prev) => {
+            const fallback = mapAuthUserFallback(session.user);
+            if (prev && prev.id === session.user.id) {
+              return {
+                ...fallback,
+                avatar_url: prev.avatar_url ?? fallback.avatar_url,
+              };
+            }
+            return fallback;
+          });
         } else {
           setUser(null);
         }
@@ -201,6 +228,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
+        setUser(mapAuthUserFallback(data.user));
+
         try {
           await withTimeout(ensureProfile(data.user));
         } catch {

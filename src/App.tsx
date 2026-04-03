@@ -25,14 +25,27 @@ import MyFarms from "./pages/MyFarms";
 import ExpertConsultancy from "./pages/ExpertConsultancy";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 5 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 /* Page transition wrapper */
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -12 },
-  transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
 };
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
@@ -46,7 +59,7 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="sync">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageWrapper><Index /></PageWrapper>} />
         <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Wheat, Bot, CloudSun, TrendingUp, ShoppingCart,
   Warehouse, Handshake, MessageCircle, Users, BookOpen, Receipt, Briefcase,
@@ -39,6 +40,58 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { notifications, loading: notificationsLoading } = useDashboardNotifications(user?.id);
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(user?.avatar_url || null);
+  const [avatarUserId, setAvatarUserId] = useState<string | null>(user?.id || null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAvatarUserId(null);
+      setResolvedAvatarUrl(null);
+      return;
+    }
+
+    // If account changed, sync immediately with the new account state.
+    if (avatarUserId !== user.id) {
+      setAvatarUserId(user.id);
+      setResolvedAvatarUrl(user.avatar_url || null);
+      return;
+    }
+
+    // Same account: only update when we have a real avatar URL.
+    // This avoids brief fallback initials flash during token refresh/profile hydration.
+    if (user.avatar_url) {
+      setResolvedAvatarUrl(user.avatar_url);
+    }
+  }, [avatarUserId, user?.avatar_url, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setResolvedAvatarUrl(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (isMounted && data?.avatar_url) {
+          setResolvedAvatarUrl(data.avatar_url);
+        }
+      } catch {
+        // Keep context value if profile lookup fails.
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   const displayName = user?.full_name || user?.email || "User";
   const initials = (displayName || "U").split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -83,8 +136,8 @@ export default function DashboardLayout() {
       <div className="px-2 pb-4 border-t border-sidebar-border pt-3 shrink-0 space-y-1">
         <div className={`flex items-center gap-3 px-3 py-2 ${collapsed ? "justify-center" : ""}`}>
           <div className="w-8 h-8 rounded-full overflow-hidden gradient-warm flex items-center justify-center text-secondary-foreground font-heading font-bold text-xs shrink-0">
-            {user?.avatar_url ? (
-              <img src={user.avatar_url} alt="User profile" className="w-full h-full object-cover" />
+            {resolvedAvatarUrl ? (
+              <img src={resolvedAvatarUrl} alt="User profile" className="w-full h-full object-cover" />
             ) : (
               initials
             )}
@@ -185,8 +238,8 @@ export default function DashboardLayout() {
               </PopoverContent>
             </Popover>
             <button onClick={() => navigate("/dashboard/settings")} className="w-8 h-8 rounded-full overflow-hidden gradient-hero flex items-center justify-center text-primary-foreground font-heading font-bold text-xs hover:opacity-90 transition-all border-2 border-transparent hover:border-primary/20 focus:outline-none">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="User profile" className="w-full h-full object-cover" />
+              {resolvedAvatarUrl ? (
+                <img src={resolvedAvatarUrl} alt="User profile" className="w-full h-full object-cover" />
               ) : (
                 initials
               )}

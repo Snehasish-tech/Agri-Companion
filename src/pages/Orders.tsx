@@ -22,6 +22,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
+import logo from "@/assets/logo.jpg";
 
 type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 
@@ -113,7 +114,7 @@ function OrderCard({
   );
 
   // ── INVOICE PDF ────────────────────────────────────────────────────────────
-  const handleDownloadInvoice = useCallback(() => {
+  const handleDownloadInvoice = useCallback(async () => {
     const doc = new jsPDF({ format: "a4", orientation: "portrait" });
 
     const PAGE_W = doc.internal.pageSize.getWidth();   // 210
@@ -134,24 +135,45 @@ function OrderCard({
     doc.setFillColor(...GREEN_MID);
     doc.rect(0, 0, PAGE_W, 48, "F");
 
-    // Logo circle
-    doc.setFillColor(...GREEN_DARK);
-    doc.circle(ML + 8, 24, 8, "F");
-    doc.setTextColor(...WHITE);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("AC", ML + 5.2, 25.5);
+    // Render real logo image in header; fallback to KG badge if loading fails.
+    let logoRendered = false;
+    try {
+      if (logo) {
+        const logoResponse = await fetch(logo);
+        const logoBlob = await logoResponse.blob();
+        const logoDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error("Logo conversion failed"));
+          reader.readAsDataURL(logoBlob);
+        });
+
+        doc.addImage(logoDataUrl, "JPEG", ML, 16, 16, 16);
+        logoRendered = true;
+      }
+    } catch {
+      logoRendered = false;
+    }
+
+    if (!logoRendered) {
+      doc.setFillColor(...GREEN_DARK);
+      doc.circle(ML + 8, 24, 8, "F");
+      doc.setTextColor(...WHITE);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("KG", ML + 5.2, 25.5);
+    }
 
     // Company name + tagline
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...WHITE);
-    doc.text("AGRI COMPANION", ML + 20, 20);
+    doc.text("KrishiGrowAI", ML + 20, 20);
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text("Mandi-to-Market Platform for Indian Farmers", ML + 20, 27);
-    doc.text("support@agricompanion.in  |  www.agricompanion.in", ML + 20, 33);
+    doc.text("Mandi-to-Market Platform for Farmers", ML + 20, 27);
+    doc.text("support@krishigrowai.in  |  www.krishigrowai.in", ML + 20, 33);
 
     // INVOICE label — right side of header
     doc.setFontSize(26);
@@ -357,10 +379,10 @@ function OrderCard({
 
     const termLines: string[] = [
       "1. Invoice valid for 30 days from issue date.",
-      "2. Goods remain property of Agri Companion",
+      "2. Goods remain property of KrishiGrowAI",
       "   until full payment is received.",
       "3. Disputes subject to Indian jurisdiction.",
-      "4. Computer-generated; no signature needed.",
+      "4. This invoice is valid without seller signature.",
     ];
 
     const maxRows = Math.max(payLines.length, termLines.length);
@@ -388,6 +410,50 @@ function OrderCard({
       Y += 8;
     }
 
+    // ── SELLER SIGNATURE SECTION ─────────────────────────────────
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(ML, Y, PAGE_W - MR, Y);
+    Y += 8;
+
+    // Split into two signature areas
+    const sigColX = PAGE_W / 2;
+    const sigLabelY = Y;
+    const sigLineY = Y + 20;
+
+    // Left: Buyer signature
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GRAY_DARK);
+    doc.text("Buyer Signature", ML, sigLabelY);
+    
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.4);
+    doc.line(ML, sigLineY, sigColX - 5, sigLineY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...GRAY_MID);
+    doc.text("Date: ________________", ML, sigLineY + 5);
+
+    // Right: Seller signature (AUTHORIZED SELLER SIGNATURE)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GRAY_DARK);
+    doc.text("Authorized Seller Signature", sigColX + 5, sigLabelY);
+    doc.text("(Seal of Market Owner)", sigColX + 5, sigLabelY + 4);
+    
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.4);
+    doc.line(sigColX + 5, sigLineY, PAGE_W - MR, sigLineY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...GRAY_MID);
+    doc.text("Date: ________________", sigColX + 5, sigLineY + 5);
+
+    Y = sigLineY + 12;
+
     // ── FOOTER BAND ──────────────────────────────────────────────
     doc.setFillColor(...GRAY_LIGHT);
     doc.rect(0, PAGE_H - 22, PAGE_W, 22, "F");
@@ -399,13 +465,13 @@ function OrderCard({
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...GREEN_DARK);
-    doc.text("Agri Companion", ML, PAGE_H - 14);
+    doc.text("KrishiGrowAI", ML, PAGE_H - 14);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(...GRAY_MID);
     doc.text(
-      "This is a computer-generated invoice and is valid without a physical signature.",
+      "Thank you for your order. This invoice is valid with or without seller signature.",
       PAGE_W / 2, PAGE_H - 14, { align: "center" }
     );
     doc.text(
@@ -416,15 +482,15 @@ function OrderCard({
     doc.setTextColor(160, 160, 160);
     doc.setFontSize(6.5);
     doc.text(
-      "Agri Companion  |  support@agricompanion.in  |  www.agricompanion.in",
+      "KrishiGrowAI  |  support@krishigrowai.in  |  www.krishigrowai.in",
       PAGE_W / 2, PAGE_H - 8, { align: "center" }
     );
 
     doc.save(`Invoice_${order.id}_${Date.now()}.pdf`);
 
     toast({
-      title: "Invoice Downloaded",
-      description: `Invoice for ${order.id} saved successfully.`,
+      title: "✅ Invoice Generated Successfully",
+      description: `Professional invoice for ${order.id} is ready for download.`,
     });
   }, [order, type, toast]);
   // ── END INVOICE PDF ────────────────────────────────────────────
