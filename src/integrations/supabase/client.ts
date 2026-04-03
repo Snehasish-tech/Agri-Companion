@@ -15,16 +15,45 @@ function clearBrokenAuthToken() {
     const raw = localStorage.getItem(authKey);
     if (!raw) return;
 
-    const parsed = JSON.parse(raw);
-    const refreshToken = parsed?.refresh_token || parsed?.currentSession?.refresh_token;
-    if (!refreshToken || typeof refreshToken !== 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      // Only clear if token is completely malformed (missing user.id)
+      // Do NOT clear valid tokens just because refresh_token is missing
+      if (parsed && typeof parsed === 'object') {
+        // Check for valid session structure
+        const hasValidSession = 
+          (parsed?.user?.id && typeof parsed.user.id === 'string') ||
+          (parsed?.currentSession?.user?.id && typeof parsed.currentSession.user.id === 'string');
+        
+        if (!hasValidSession) {
+          localStorage.removeItem(authKey);
+        }
+      } else {
+        localStorage.removeItem(authKey);
+      }
+    } catch (parseError) {
+      // If JSON is invalid, clear it
       localStorage.removeItem(authKey);
     }
   } catch {
     // If token JSON or URL parsing is invalid, clear old auth entries to recover.
     Object.keys(localStorage)
       .filter((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
-      .forEach((key) => localStorage.removeItem(key));
+      .forEach((key) => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          const hasValidSession = 
+            (parsed?.user?.id && typeof parsed.user.id === 'string') ||
+            (parsed?.currentSession?.user?.id && typeof parsed.currentSession.user.id === 'string');
+          if (!hasValidSession) {
+            localStorage.removeItem(key);
+          }
+        } catch {
+          localStorage.removeItem(key);
+        }
+      });
   }
 }
 
