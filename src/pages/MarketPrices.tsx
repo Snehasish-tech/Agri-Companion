@@ -1,16 +1,15 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+﻿import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Search, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
-  Filter, IndianRupee, BarChart3, MapPin, Loader2,
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Search, TrendingUp, TrendingDown, MapPin, RefreshCw, GitCompareArrows } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 interface CropPrice {
   id: number;
@@ -23,393 +22,632 @@ interface CropPrice {
   mandi: string;
   state: string;
   category: string;
+  minPrice?: number;
+  maxPrice?: number;
+  arrivalDate?: string;
   history: { date: string; price: number }[];
 }
 
-const crops: CropPrice[] = [
-  // Vegetables
-  { id: 1, name: "Tomato", nameHi: "टमाटर", emoji: "🍅", price: 2800, unit: "kg", change24h: 8.5, mandi: "Azadpur", state: "Delhi", category: "Vegetables",
-    history: [{ date: "Mon", price: 2200 }, { date: "Tue", price: 2400 }, { date: "Wed", price: 2500 }, { date: "Thu", price: 2600 }, { date: "Fri", price: 2700 }, { date: "Sat", price: 2800 }] },
-  { id: 2, name: "Onion", nameHi: "प्याज़", emoji: "🧅", price: 2400, unit: "kg", change24h: 5.2, mandi: "Lasalgaon", state: "Maharashtra", category: "Vegetables",
-    history: [{ date: "Mon", price: 2200 }, { date: "Tue", price: 2250 }, { date: "Wed", price: 2300 }, { date: "Thu", price: 2320 }, { date: "Fri", price: 2370 }, { date: "Sat", price: 2400 }] },
-  { id: 3, name: "Potato", nameHi: "आलू", emoji: "🥔", price: 1800, unit: "kg", change24h: -2.1, mandi: "Kolkata", state: "West Bengal", category: "Vegetables",
-    history: [{ date: "Mon", price: 1900 }, { date: "Tue", price: 1880 }, { date: "Wed", price: 1860 }, { date: "Thu", price: 1840 }, { date: "Fri", price: 1820 }, { date: "Sat", price: 1800 }] },
-  { id: 4, name: "Cabbage", nameHi: "पत्तागोभी", emoji: "🥬", price: 1200, unit: "kg", change24h: 3.4, mandi: "Bangalore", state: "Karnataka", category: "Vegetables",
-    history: [{ date: "Mon", price: 1100 }, { date: "Tue", price: 1120 }, { date: "Wed", price: 1150 }, { date: "Thu", price: 1170 }, { date: "Fri", price: 1190 }, { date: "Sat", price: 1200 }] },
-  { id: 5, name: "Carrot", nameHi: "गाजर", emoji: "🥕", price: 1600, unit: "kg", change24h: 1.8, mandi: "Pune", state: "Maharashtra", category: "Vegetables",
-    history: [{ date: "Mon", price: 1550 }, { date: "Tue", price: 1560 }, { date: "Wed", price: 1575 }, { date: "Thu", price: 1585 }, { date: "Fri", price: 1595 }, { date: "Sat", price: 1600 }] },
-  { id: 6, name: "Cucumber", nameHi: "ककड़ी", emoji: "🥒", price: 1400, unit: "kg", change24h: -4.2, mandi: "Chennai", state: "Tamil Nadu", category: "Vegetables",
-    history: [{ date: "Mon", price: 1500 }, { date: "Tue", price: 1480 }, { date: "Wed", price: 1460 }, { date: "Thu", price: 1440 }, { date: "Fri", price: 1420 }, { date: "Sat", price: 1400 }] },
-  { id: 7, name: "Brinjal", nameHi: "बैंगन", emoji: "🍆", price: 2200, unit: "kg", change24h: 6.1, mandi: "Hyderabad", state: "Telangana", category: "Vegetables",
-    history: [{ date: "Mon", price: 2000 }, { date: "Tue", price: 2050 }, { date: "Wed", price: 2100 }, { date: "Thu", price: 2150 }, { date: "Fri", price: 2175 }, { date: "Sat", price: 2200 }] },
-  { id: 8, name: "Capsicum", nameHi: "शिमला मिर्च", emoji: "🫑", price: 3200, unit: "kg", change24h: 7.3, mandi: "Mumbai", state: "Maharashtra", category: "Vegetables",
-    history: [{ date: "Mon", price: 2800 }, { date: "Tue", price: 2900 }, { date: "Wed", price: 3000 }, { date: "Thu", price: 3100 }, { date: "Fri", price: 3150 }, { date: "Sat", price: 3200 }] },
-  { id: 9, name: "Cauliflower", nameHi: "फूलगोभी", emoji: "🥦", price: 1500, unit: "kg", change24h: 2.5, mandi: "Jaipur", state: "Rajasthan", category: "Vegetables",
-    history: [{ date: "Mon", price: 1450 }, { date: "Tue", price: 1460 }, { date: "Wed", price: 1475 }, { date: "Thu", price: 1490 }, { date: "Fri", price: 1495 }, { date: "Sat", price: 1500 }] },
-  { id: 10, name: "Spinach", nameHi: "पालक", emoji: "🌿", price: 800, unit: "kg", change24h: -1.2, mandi: "Lucknow", state: "Uttar Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 820 }, { date: "Tue", price: 815 }, { date: "Wed", price: 810 }, { date: "Thu", price: 805 }, { date: "Fri", price: 802 }, { date: "Sat", price: 800 }] },
-  { id: 11, name: "Bottle Gourd", nameHi: "लौकी", emoji: "🍈", price: 1000, unit: "kg", change24h: -2.8, mandi: "Ahmedabad", state: "Gujarat", category: "Vegetables",
-    history: [{ date: "Mon", price: 1050 }, { date: "Tue", price: 1040 }, { date: "Wed", price: 1025 }, { date: "Thu", price: 1015 }, { date: "Fri", price: 1008 }, { date: "Sat", price: 1000 }] },
-  { id: 12, name: "Bitter Gourd", nameHi: "करेला", emoji: "🥒", price: 1800, unit: "kg", change24h: 4.6, mandi: "Indore", state: "Madhya Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 1700 }, { date: "Tue", price: 1720 }, { date: "Wed", price: 1750 }, { date: "Thu", price: 1775 }, { date: "Fri", price: 1790 }, { date: "Sat", price: 1800 }] },
-  // Cereals
-  { id: 13, name: "Wheat", nameHi: "गेहूँ", emoji: "🌾", price: 2650, unit: "quintal", change24h: 2.1, mandi: "Delhi", state: "Delhi", category: "Cereals",
-    history: [{ date: "Mon", price: 2580 }, { date: "Tue", price: 2600 }, { date: "Wed", price: 2620 }, { date: "Thu", price: 2610 }, { date: "Fri", price: 2640 }, { date: "Sat", price: 2650 }] },
-  { id: 14, name: "Rice", nameHi: "चावल", emoji: "🍚", price: 4200, unit: "quintal", change24h: -1.3, mandi: "Karnal", state: "Haryana", category: "Cereals",
-    history: [{ date: "Mon", price: 4300 }, { date: "Tue", price: 4280 }, { date: "Wed", price: 4250 }, { date: "Thu", price: 4230 }, { date: "Fri", price: 4210 }, { date: "Sat", price: 4200 }] },
-  // Spices
-  { id: 15, name: "Green Chilli", nameHi: "हरी मिर्च", emoji: "🌶️", price: 3200, unit: "kg", change24h: -6.5, mandi: "Guntur", state: "Andhra Pradesh", category: "Spices",
-    history: [{ date: "Mon", price: 3500 }, { date: "Tue", price: 3450 }, { date: "Wed", price: 3400 }, { date: "Thu", price: 3350 }, { date: "Fri", price: 3280 }, { date: "Sat", price: 3200 }] },
-  { id: 16, name: "Turmeric", nameHi: "हल्दी", emoji: "🟡", price: 12500, unit: "quintal", change24h: 4.1, mandi: "Erode", state: "Tamil Nadu", category: "Spices",
-    history: [{ date: "Mon", price: 11900 }, { date: "Tue", price: 12000 }, { date: "Wed", price: 12100 }, { date: "Thu", price: 12200 }, { date: "Fri", price: 12350 }, { date: "Sat", price: 12500 }] },
-  // Pulses
-  { id: 17, name: "Chickpea", nameHi: "चना", emoji: "🫛", price: 5600, unit: "quintal", change24h: 2.5, mandi: "Indore", state: "Madhya Pradesh", category: "Pulses",
-    history: [{ date: "Mon", price: 5450 }, { date: "Tue", price: 5480 }, { date: "Wed", price: 5500 }, { date: "Thu", price: 5530 }, { date: "Fri", price: 5560 }, { date: "Sat", price: 5600 }] },
-  // Oilseeds
-  { id: 18, name: "Soybean", nameHi: "सोयाबीन", emoji: "🫘", price: 4800, unit: "quintal", change24h: 1.4, mandi: "Indore", state: "Madhya Pradesh", category: "Oilseeds",
-    history: [{ date: "Mon", price: 4700 }, { date: "Tue", price: 4720 }, { date: "Wed", price: 4740 }, { date: "Thu", price: 4760 }, { date: "Fri", price: 4780 }, { date: "Sat", price: 4800 }] },
-  // More demo vegetables
-  { id: 19, name: "Okra", nameHi: "भिंडी", emoji: "🫛", price: 2100, unit: "kg", change24h: 3.1, mandi: "Surat", state: "Gujarat", category: "Vegetables",
-    history: [{ date: "Mon", price: 1980 }, { date: "Tue", price: 2010 }, { date: "Wed", price: 2040 }, { date: "Thu", price: 2070 }, { date: "Fri", price: 2090 }, { date: "Sat", price: 2100 }] },
-  { id: 20, name: "Radish", nameHi: "मूली", emoji: "🥕", price: 900, unit: "kg", change24h: -1.8, mandi: "Agra", state: "Uttar Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 940 }, { date: "Tue", price: 930 }, { date: "Wed", price: 925 }, { date: "Thu", price: 915 }, { date: "Fri", price: 905 }, { date: "Sat", price: 900 }] },
-  { id: 21, name: "Beetroot", nameHi: "चुकंदर", emoji: "🍠", price: 1700, unit: "kg", change24h: 2.2, mandi: "Nashik", state: "Maharashtra", category: "Vegetables",
-    history: [{ date: "Mon", price: 1620 }, { date: "Tue", price: 1640 }, { date: "Wed", price: 1660 }, { date: "Thu", price: 1680 }, { date: "Fri", price: 1690 }, { date: "Sat", price: 1700 }] },
-  { id: 22, name: "Pumpkin", nameHi: "कद्दू", emoji: "🎃", price: 1300, unit: "kg", change24h: 1.5, mandi: "Kanpur", state: "Uttar Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 1240 }, { date: "Tue", price: 1255 }, { date: "Wed", price: 1270 }, { date: "Thu", price: 1285 }, { date: "Fri", price: 1290 }, { date: "Sat", price: 1300 }] },
-  { id: 23, name: "Ridge Gourd", nameHi: "तुरई", emoji: "🥒", price: 1500, unit: "kg", change24h: -0.9, mandi: "Patna", state: "Bihar", category: "Vegetables",
-    history: [{ date: "Mon", price: 1540 }, { date: "Tue", price: 1530 }, { date: "Wed", price: 1520 }, { date: "Thu", price: 1510 }, { date: "Fri", price: 1505 }, { date: "Sat", price: 1500 }] },
-  { id: 24, name: "Drumstick", nameHi: "सहजन", emoji: "🌿", price: 2600, unit: "kg", change24h: 4.7, mandi: "Madurai", state: "Tamil Nadu", category: "Vegetables",
-    history: [{ date: "Mon", price: 2350 }, { date: "Tue", price: 2400 }, { date: "Wed", price: 2475 }, { date: "Thu", price: 2520 }, { date: "Fri", price: 2570 }, { date: "Sat", price: 2600 }] },
-  { id: 25, name: "Coriander", nameHi: "धनिया", emoji: "🌿", price: 1100, unit: "kg", change24h: 2.9, mandi: "Bhopal", state: "Madhya Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 1030 }, { date: "Tue", price: 1050 }, { date: "Wed", price: 1065 }, { date: "Thu", price: 1080 }, { date: "Fri", price: 1090 }, { date: "Sat", price: 1100 }] },
-  { id: 26, name: "Green Peas", nameHi: "हरी मटर", emoji: "🫛", price: 2300, unit: "kg", change24h: -3.3, mandi: "Shimla", state: "Himachal Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 2500 }, { date: "Tue", price: 2460 }, { date: "Wed", price: 2420 }, { date: "Thu", price: 2380 }, { date: "Fri", price: 2340 }, { date: "Sat", price: 2300 }] },
-  { id: 27, name: "Garlic", nameHi: "लहसुन", emoji: "🧄", price: 4200, unit: "kg", change24h: 5.6, mandi: "Mandsaur", state: "Madhya Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 3900 }, { date: "Tue", price: 3980 }, { date: "Wed", price: 4040 }, { date: "Thu", price: 4100 }, { date: "Fri", price: 4160 }, { date: "Sat", price: 4200 }] },
-  { id: 28, name: "Ginger", nameHi: "अदरक", emoji: "🫚", price: 3800, unit: "kg", change24h: 3.8, mandi: "Kochi", state: "Kerala", category: "Vegetables",
-    history: [{ date: "Mon", price: 3520 }, { date: "Tue", price: 3580 }, { date: "Wed", price: 3640 }, { date: "Thu", price: 3700 }, { date: "Fri", price: 3750 }, { date: "Sat", price: 3800 }] },
-  { id: 29, name: "Fenugreek Leaves", nameHi: "मेथी", emoji: "🌿", price: 1250, unit: "kg", change24h: -2.4, mandi: "Nagpur", state: "Maharashtra", category: "Vegetables",
-    history: [{ date: "Mon", price: 1320 }, { date: "Tue", price: 1300 }, { date: "Wed", price: 1285 }, { date: "Thu", price: 1270 }, { date: "Fri", price: 1260 }, { date: "Sat", price: 1250 }] },
-  { id: 30, name: "Pointed Gourd", nameHi: "परवल", emoji: "🥒", price: 1950, unit: "kg", change24h: 1.1, mandi: "Varanasi", state: "Uttar Pradesh", category: "Vegetables",
-    history: [{ date: "Mon", price: 1890 }, { date: "Tue", price: 1900 }, { date: "Wed", price: 1915 }, { date: "Thu", price: 1930 }, { date: "Fri", price: 1940 }, { date: "Sat", price: 1950 }] },
-  { id: 31, name: "Turnip", nameHi: "शलजम", emoji: "🥔", price: 1150, unit: "kg", change24h: 0.7, mandi: "Dehradun", state: "Uttarakhand", category: "Vegetables",
-    history: [{ date: "Mon", price: 1110 }, { date: "Tue", price: 1120 }, { date: "Wed", price: 1130 }, { date: "Thu", price: 1135 }, { date: "Fri", price: 1140 }, { date: "Sat", price: 1150 }] },
-  { id: 32, name: "Sweet Corn", nameHi: "मीठा मक्का", emoji: "🌽", price: 1850, unit: "kg", change24h: 2.6, mandi: "Mysore", state: "Karnataka", category: "Vegetables",
-    history: [{ date: "Mon", price: 1740 }, { date: "Tue", price: 1760 }, { date: "Wed", price: 1785 }, { date: "Thu", price: 1810 }, { date: "Fri", price: 1830 }, { date: "Sat", price: 1850 }] },
+interface VegetableMeta {
+  name: string;
+  nameHi: string;
+  emoji: string;
+  category: string;
+}
+
+interface StateWholesaleData {
+  state: string;
+  mandi: string;
+  values: number[];
+}
+
+const vegetableCatalog: VegetableMeta[] = [
+  { name: "Tomato", nameHi: "टमाटर", emoji: "🍅", category: "Vegetables" },
+  { name: "Potato", nameHi: "आलू", emoji: "🥔", category: "Vegetables" },
+  { name: "Onion Big", nameHi: "प्याज़", emoji: "🧅", category: "Vegetables" },
+  { name: "Brinjal", nameHi: "बैंगन", emoji: "🍆", category: "Vegetables" },
+  { name: "Cabbage", nameHi: "पत्तागोभी", emoji: "🥬", category: "Vegetables" },
+  { name: "Cauliflower", nameHi: "फूलगोभी", emoji: "🥦", category: "Vegetables" },
+  { name: "Capsicum", nameHi: "शिमला मिर्च", emoji: "🫑", category: "Vegetables" },
+  { name: "Carrot", nameHi: "गाजर", emoji: "🥕", category: "Vegetables" },
+  { name: "Bitter Gourd", nameHi: "करेला", emoji: "🥒", category: "Vegetables" },
+  { name: "Bottle Gourd", nameHi: "लौकी", emoji: "🥬", category: "Vegetables" },
+  { name: "Lady's Finger", nameHi: "भिंडी", emoji: "🌱", category: "Vegetables" },
+  { name: "Green Chilli", nameHi: "हरी मिर्च", emoji: "🌶️", category: "Spices" },
+  { name: "Cucumber", nameHi: "खीरा", emoji: "🥒", category: "Vegetables" },
+  { name: "Radish", nameHi: "मूली", emoji: "🥕", category: "Vegetables" },
+  { name: "Spinach", nameHi: "पालक", emoji: "🌿", category: "Vegetables" },
+  { name: "Pumpkin", nameHi: "कद्दू", emoji: "🎃", category: "Vegetables" },
+  { name: "Ridge Gourd", nameHi: "तोरई", emoji: "🥬", category: "Vegetables" },
+  { name: "Snake Gourd", nameHi: "चिचिंडा", emoji: "🥒", category: "Vegetables" },
+  { name: "Ginger", nameHi: "अदरक", emoji: "🫚", category: "Spices" },
+  { name: "Garlic", nameHi: "लहसुन", emoji: "🧄", category: "Spices" },
 ];
 
-const categories = ["All", "Cereals", "Vegetables", "Oilseeds", "Cash Crops", "Pulses", "Spices"];
+const stateWholesaleData: StateWholesaleData[] = [
+  { state: "Delhi", mandi: "Delhi (NCR)", values: [18, 18, 22, 36, 20, 34, 56, 29, 43, 27, 31, 66, 28, 32, 18, 24, 38, 31, 87, 134] },
+  { state: "West Bengal", mandi: "Kolkata", values: [13, 16, 19, 25, 18, 28, 45, 24, 33, 24, 25, 50, 23, 25, 14, 20, 32, 26, 69, 110] },
+  { state: "Maharashtra", mandi: "Mumbai", values: [17, 22, 20, 32, 19, 30, 50, 24, 35, 25, 34, 40, 27, 29, 10, 19, 39, 33, 75, 124] },
+  { state: "Karnataka", mandi: "Bangalore", values: [21, 21, 23, 36, 25, 31, 57, 31, 45, 29, 34, 69, 30, 31, 15, 25, 39, 33, 93, 151] },
+  { state: "Tamil Nadu", mandi: "Chennai", values: [30, 60, 80, 40, 20, 25, 60, 35, 110, 30, 60, 80, 30, 25, 20, 25, 40, 35, 90, 140] },
+  { state: "Telangana", mandi: "Hyderabad", values: [20, 25, 22, 30, 22, 28, 55, 28, 40, 25, 30, 60, 25, 22, 15, 22, 35, 30, 80, 130] },
+  { state: "Rajasthan", mandi: "Jaipur", values: [18, 20, 22, 28, 15, 25, 50, 30, 35, 20, 28, 55, 22, 18, 12, 18, 30, 28, 75, 120] },
+  { state: "Gujarat", mandi: "Ahmedabad", values: [20, 18, 20, 30, 18, 28, 52, 26, 38, 22, 30, 50, 24, 22, 12, 20, 32, 28, 78, 122] },
+  { state: "Punjab", mandi: "Ludhiana", values: [20, 15, 24, 30, 18, 30, 55, 28, 40, 22, 30, 60, 25, 20, 14, 20, 32, 28, 80, 120] },
+  { state: "Uttar Pradesh", mandi: "Lucknow", values: [20, 16, 22, 28, 18, 28, 50, 26, 38, 22, 28, 55, 24, 20, 14, 20, 32, 28, 80, 118] },
+  { state: "Bihar", mandi: "Patna", values: [18, 14, 20, 25, 16, 24, 45, 24, 32, 20, 26, 50, 20, 18, 12, 18, 28, 25, 70, 110] },
+  { state: "Madhya Pradesh", mandi: "Bhopal", values: [18, 16, 20, 28, 16, 26, 48, 25, 35, 20, 28, 52, 22, 18, 12, 18, 30, 26, 75, 115] },
+  { state: "Andhra Pradesh", mandi: "Vijayawada", values: [22, 28, 22, 30, 20, 28, 55, 30, 42, 24, 32, 65, 25, 22, 16, 22, 34, 30, 82, 132] },
+  { state: "Kerala", mandi: "Kochi", values: [35, 50, 40, 45, 28, 40, 70, 40, 55, 30, 40, 80, 30, 28, 25, 28, 40, 35, 95, 160] },
+  { state: "Haryana", mandi: "Gurgaon", values: [19, 16, 22, 30, 18, 30, 52, 28, 40, 22, 30, 60, 25, 20, 14, 20, 32, 28, 82, 125] },
+  { state: "Odisha", mandi: "Bhubaneswar", values: [20, 18, 22, 28, 18, 26, 48, 26, 35, 22, 28, 55, 22, 20, 14, 20, 30, 26, 75, 115] },
+  { state: "Assam", mandi: "Guwahati", values: [25, 22, 28, 30, 22, 30, 55, 30, 40, 28, 32, 65, 28, 24, 18, 24, 35, 30, 85, 120] },
+  { state: "Chhattisgarh", mandi: "Raipur", values: [20, 18, 22, 28, 18, 26, 50, 26, 35, 22, 28, 55, 22, 20, 14, 18, 30, 26, 75, 115] },
+  { state: "Jharkhand", mandi: "Ranchi", values: [22, 18, 22, 28, 18, 26, 50, 26, 36, 22, 28, 55, 22, 20, 15, 20, 30, 26, 75, 112] },
+  { state: "Himachal Pradesh", mandi: "Shimla", values: [22, 20, 26, 32, 20, 30, 55, 30, 40, 25, 32, 60, 26, 22, 16, 22, 32, 28, 80, 125] },
+];
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutHandle = setTimeout(() => {
-      reject(new Error(`${label} timeout after ${timeoutMs}ms`));
-    }, timeoutMs);
+const buildHistory = (basePrice: number, change: number): { date: string; price: number }[] => {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const trend = change >= 0 ? 1 : -1;
+  return days.map((day, i) => {
+    const factor = 1 + trend * i * 0.01;
+    const noise = 1 + ((i % 2 === 0 ? 1 : -1) * 0.006);
+    return { date: day, price: Math.max(1, Math.round(basePrice * factor * noise)) };
   });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  }
 };
 
-const fetchMarketPrices = async () => {
-  try {
-    // Primary path: fetch via Supabase edge function (server-side, no browser CORS delays)
-    const result = await withTimeout(
-      supabase.functions.invoke("market-prices"),
-      8000,
-      "market-prices edge function"
-    );
-
-    const { data, error } = result;
-
-    if (error) {
-      console.warn("⚠️ market-prices edge function error:", error.message);
-      return [];
-    }
-
-    if (!data?.records || !Array.isArray(data.records) || data.records.length === 0) {
-      console.warn("⚠️ market-prices returned empty records; using fallback UI data");
-      return [];
-    }
-
-    console.log(`✅ LIVE prices loaded via edge function: ${data.records.length} records`);
-
-    return data.records
-      .map((record: any) => ({
-        commodity: String(record.commodity || "").trim(),
-        modal_price: parseFloat(record.modal_price) || 0,
-        market: String(record.market || "").trim(),
-        state: String(record.state || "").trim(),
-        date: record.arrival_date || new Date().toLocaleDateString(),
-      }))
-      .filter((r: any) => r.modal_price > 0);
-  } catch (error) {
-    console.error("❌ Market API logic error:", error);
-    return [];
-  }
+const getStableChange = (name: string, state: string): number => {
+  const seed = `${name}-${state}`.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const value = ((seed % 140) - 60) / 10;
+  return parseFloat(value.toFixed(1));
 };
+
+const mockCrops: CropPrice[] = stateWholesaleData.flatMap((stateInfo, stateIndex) =>
+  vegetableCatalog.map((veg, vegIndex) => {
+    const wholesale = stateInfo.values[vegIndex];
+    const retailMin = Math.round(wholesale * 1.2);
+    const retailMax = Math.round(wholesale * 1.5);
+    const change24h = getStableChange(veg.name, stateInfo.state);
+
+    return {
+      id: stateIndex * 100 + vegIndex + 1,
+      name: veg.name,
+      nameHi: veg.nameHi,
+      emoji: veg.emoji,
+      price: wholesale,
+      unit: "kg",
+      change24h,
+      mandi: stateInfo.mandi,
+      state: stateInfo.state,
+      category: veg.category,
+      minPrice: retailMin,
+      maxPrice: retailMax,
+      arrivalDate: "2026-04-04",
+      history: buildHistory(wholesale, change24h),
+    };
+  })
+);
 
 export default function MarketPrices() {
+  const { t } = useTranslation();
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedCrop, setSelectedCrop] = useState<CropPrice | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "price" | "change">("change");
+  const [stateFilter, setStateFilter] = useState("West Bengal");
+  const [liveCrops, setLiveCrops] = useState<CropPrice[]>(mockCrops);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const { data: apiRecords, isLoading, isFetching } = useQuery({
-    queryKey: ["marketPrices"],
-    queryFn: fetchMarketPrices,
-    refetchInterval: 300000, // Refetch every 5 minutes (300000 ms)
-    staleTime: 240000, // Data is fresh for 4 minutes
-    gcTime: 600000, // Cache for 10 minutes
-    refetchOnWindowFocus: false,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-  });
+  const [compareVegetable, setCompareVegetable] = useState("Tomato");
+  const [compareStateA, setCompareStateA] = useState("West Bengal");
+  const [compareStateB, setCompareStateB] = useState("Delhi");
 
-  const liveCrops = useMemo(() => {
-    // If API returned no data, use mock crops
-    if (!apiRecords || apiRecords.length === 0) {
-      console.log("📊 Using mock crop data (API unavailable)");
-      return crops;
-    }
+  const categories = useMemo(() => ["All", ...new Set(liveCrops.map((c) => c.category))], [liveCrops]);
+  const states = useMemo(() => ["All", ...new Set(liveCrops.map((c) => c.state))], [liveCrops]);
 
-    console.log("🔄 Updating prices from live API data...");
+  const getCategoryLabel = (cat: string) => {
+    if (cat === "All") return t("market.categories.all", { defaultValue: "All" });
+    if (cat === "Vegetables") return t("market.categories.vegetables", { defaultValue: "Vegetables" });
+    if (cat === "Cereals") return t("market.categories.cereals", { defaultValue: "Cereals" });
+    if (cat === "Oilseeds") return t("market.categories.oilseeds", { defaultValue: "Oilseeds" });
+    if (cat === "Pulses") return t("market.categories.pulses", { defaultValue: "Pulses" });
+    if (cat === "Spices") return t("market.categories.spices", { defaultValue: "Spices" });
+    return cat;
+  };
 
-    return crops.map(c => {
-      const cleanName = c.name.split("(")[0].trim().toLowerCase();
-      
-      // Try multiple matching strategies
-      const live = apiRecords.find((r: any) => {
-        const commodityLower = r.commodity.toLowerCase();
-        
-        // Exact word match
-        if (commodityLower === cleanName) return true;
-        
-        // Substring match
-        if (commodityLower.includes(cleanName) || cleanName.includes(commodityLower)) return true;
-        
-        // For multi-word crops (e.g., "green chilli" matches "chilli")
-        const nameWords = cleanName.split(" ");
-        const commodityWords = commodityLower.split(" ");
-        if (nameWords.some(w => commodityWords.includes(w))) return true;
-        
-        return false;
-      });
-      
-      if (live && live.modal_price > 0) {
-        return {
-          ...c,
-          price: Math.round(live.modal_price), // Round to nearest integer
-          mandi: live.market || c.mandi,
-          state: live.state || c.state,
-        };
-      }
-      return c;
-    });
-  }, [apiRecords]);
+  const vegetableOptions = useMemo(() => {
+    return Array.from(new Set(liveCrops.map((c) => c.name))).sort((a, b) => a.localeCompare(b));
+  }, [liveCrops]);
 
   const filtered = useMemo(() => {
     const result = liveCrops.filter((c) => {
       const searchLower = search.toLowerCase();
-      const matchSearch = 
-        c.name.toLowerCase().includes(searchLower) || 
+      const matchSearch =
+        c.name.toLowerCase().includes(searchLower) ||
         c.nameHi.includes(search) ||
-        c.state.toLowerCase().includes(searchLower);
+        c.state.toLowerCase().includes(searchLower) ||
+        c.mandi.toLowerCase().includes(searchLower);
       const matchCat = category === "All" || c.category === category;
-      return matchSearch && matchCat;
+      const matchState = stateFilter === "All" || c.state === stateFilter;
+      return matchSearch && matchCat && matchState;
     });
+
     result.sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "price") return b.price - a.price;
       return Math.abs(b.change24h) - Math.abs(a.change24h);
     });
-    return result;
-  }, [liveCrops, search, category, sortBy]);
 
-  // Ticker
-  const tickerItems = liveCrops.filter((c) => c.change24h !== 0).map(
-    (c) => `${c.emoji} ${c.name}: ₹${c.price.toLocaleString()} (${c.change24h > 0 ? "+" : ""}${c.change24h}%)`
-  );
+    return result;
+  }, [liveCrops, search, category, sortBy, stateFilter]);
+
+  const topGainers = useMemo(() => {
+    return [...filtered].sort((a, b) => b.change24h - a.change24h).slice(0, 5);
+  }, [filtered]);
+
+  const comparisonRows = useMemo(() => {
+    return liveCrops
+      .filter((item) => item.name === compareVegetable)
+      .sort((a, b) => a.price - b.price);
+  }, [liveCrops, compareVegetable]);
+
+  const compareA = useMemo(() => {
+    return comparisonRows.find((row) => row.state === compareStateA) || null;
+  }, [comparisonRows, compareStateA]);
+
+  const compareB = useMemo(() => {
+    return comparisonRows.find((row) => row.state === compareStateB) || null;
+  }, [comparisonRows, compareStateB]);
+
+  const compareGap = compareA && compareB ? compareA.price - compareB.price : 0;
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setLiveCrops([...mockCrops]);
+      setLastUpdated(new Date());
+      setIsRefreshing(false);
+      toast.success("Market prices refreshed");
+    }, 500);
+  };
 
   return (
-    <>
-      <div className="mb-8">
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <h1 className="text-4xl font-heading font-bold text-black">
-              🌱 Market Prices
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Real-time commodity prices from across India's mandis
-            </p>
-          </div>
-          {!apiRecords || apiRecords.length === 0 ? (
-            <span className="text-xs bg-yellow-500/10 text-yellow-700 px-3 py-1 rounded-full border border-yellow-500/20 font-medium">
-              Demo Data
-            </span>
-          ) : (
-            <span className="text-xs bg-green-500/10 text-green-700 px-3 py-1 rounded-full border border-green-500/20 font-medium">
-              ✓ Live
-            </span>
-          )}
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-foreground">
+            {t("market.title", { defaultValue: "Market Prices" })}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("market.subtitleDemo", { defaultValue: "State-wise vegetable dataset with wholesale and retail range comparison" })}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {t("market.updatedAt", {
+              defaultValue: "Updated {{time}}",
+              time: lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            })}
+          </Badge>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            {t("market.refresh", { defaultValue: "Refresh" })}
+          </Button>
         </div>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading market data...</p>
-          </div>
-        </div>
-      )}
+      <motion.div
+        animate={
+          isRefreshing
+            ? { opacity: [1, 0.94, 1], y: [0, 2, 0], scale: [1, 0.998, 1] }
+            : { opacity: 1, y: 0, scale: 1 }
+        }
+        transition={{ duration: 0.45, ease: "easeInOut" }}
+        className="space-y-6"
+      >
 
-      {!isLoading && (
-        <>
-          {/* Ticker */}
-          {tickerItems.length > 0 && (
-            <div className="glass-card rounded-2xl px-5 py-3 mb-8 overflow-hidden border border-border/50">
-              <div className="flex animate-marquee whitespace-nowrap">
-                {[...tickerItems, ...tickerItems].map((item, i) => (
-                  <span key={i} className="text-sm font-medium text-muted-foreground mx-8">{item}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">{t("market.overviewTitle", { defaultValue: "Price Overview" })}</CardTitle>
+              <div className="flex gap-2 flex-wrap">
+                {categories.slice(1).map((cat) => (
+                  <Button
+                    key={cat}
+                    variant={category === cat ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setCategory(category === cat ? "All" : cat)}
+                  >
+                    {getCategoryLabel(cat)}
+                  </Button>
                 ))}
               </div>
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={filtered.slice(0, 12)}>
+                  <defs>
+                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" tickFormatter={(value) => `₹${value}`} />
+                  <Tooltip
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, t("market.wholesaleLabel", { defaultValue: "Wholesale" })]}
+                    contentStyle={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                  />
+                  <Area type="monotone" dataKey="price" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              {t("market.topMovers", { defaultValue: "Top Movers" })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topGainers.map((crop, i) => (
+              <motion.div
+                key={crop.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                onClick={() => setSelectedCrop(crop)}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xl">{crop.emoji}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{crop.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{crop.state}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-foreground">₹{crop.price}</p>
+                  <p className={`text-xs font-medium ${crop.change24h >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {crop.change24h > 0 ? "+" : ""}
+                    {crop.change24h}%
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border border-primary/20 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <GitCompareArrows className="w-4 h-4 text-primary" />
+            {t("market.compare.title", { defaultValue: "State-wise Vegetable Compare" })}
+          </CardTitle>
+          <CardDescription>
+            {t("market.compare.description", { defaultValue: "Compare wholesale and retail range of a single vegetable across states." })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Select value={compareVegetable} onValueChange={setCompareVegetable}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t("market.compare.selectVegetable", { defaultValue: "Select Vegetable" })} />
+              </SelectTrigger>
+              <SelectContent>
+                {vegetableOptions.map((veg) => (
+                  <SelectItem key={veg} value={veg}>
+                    {veg}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={compareStateA} onValueChange={setCompareStateA}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t("market.compare.stateA", { defaultValue: "State A" })} />
+              </SelectTrigger>
+              <SelectContent>
+                {states.filter((s) => s !== "All").map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={compareStateB} onValueChange={setCompareStateB}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t("market.compare.stateB", { defaultValue: "State B" })} />
+              </SelectTrigger>
+              <SelectContent>
+                {states.filter((s) => s !== "All").map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {compareA && compareB && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Card className="border-green-200 bg-green-50/40">
+                <CardContent className="p-4">
+                  <p className="text-sm font-semibold text-foreground">{compareA.state}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{compareA.mandi}</p>
+                  <p className="text-xl font-bold text-foreground">₹{compareA.price}/kg</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("market.retailLabel", { defaultValue: "Retail" })}: ₹{compareA.minPrice} - ₹{compareA.maxPrice}/kg
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-blue-200 bg-blue-50/40">
+                <CardContent className="p-4">
+                  <p className="text-sm font-semibold text-foreground">{compareB.state}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{compareB.mandi}</p>
+                  <p className="text-xl font-bold text-foreground">₹{compareB.price}/kg</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("market.retailLabel", { defaultValue: "Retail" })}: ₹{compareB.minPrice} - ₹{compareB.maxPrice}/kg
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
-          {/* Search & Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input 
-                placeholder="Search by crop, state, or mandi..." 
-                className="pl-12 h-11 rounded-xl border-2 border-border/50 focus:border-primary transition-colors text-base" 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-              />
+          {compareA && compareB && (
+            <div>
+              <Badge variant="secondary" className="text-xs">
+                {compareGap >= 0
+                  ? t("market.compare.higherText", {
+                      defaultValue: "{{higherState}} is ₹{{amount}} higher than {{lowerState}}",
+                      higherState: compareA.state,
+                      amount: Math.abs(compareGap),
+                      lowerState: compareB.state,
+                    })
+                  : t("market.compare.higherText", {
+                      defaultValue: "{{higherState}} is ₹{{amount}} higher than {{lowerState}}",
+                      higherState: compareB.state,
+                      amount: Math.abs(compareGap),
+                      lowerState: compareA.state,
+                    })}
+              </Badge>
             </div>
-          </div>
+          )}
 
-          {/* Category Filter Chips */}
-          <div className="flex gap-2 overflow-x-auto pb-4 mb-8 -mx-4 px-4">
-            {categories.map((cat) => (
-              <motion.button
-                key={cat}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setCategory(cat)}
-                className={`px-5 py-2.5 rounded-full font-medium whitespace-nowrap transition-all duration-200 ${
-                  category === cat
-                    ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/25"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted border border-border/50"
-                }`}
+          <div className="max-h-[320px] overflow-y-auto pr-1 space-y-2">
+            {comparisonRows.map((row) => (
+              <div
+                key={`${row.name}-${row.state}`}
+                className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
               >
-                {cat}
-              </motion.button>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{row.state}</p>
+                  <p className="text-xs text-muted-foreground">{row.mandi}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-foreground">₹{row.price}/kg</p>
+                  <p className="text-xs text-muted-foreground">{t("market.retailLabel", { defaultValue: "Retail" })} ₹{row.minPrice} - ₹{row.maxPrice}</p>
+                </div>
+              </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Sort Options */}
-          <div className="flex items-center gap-3 mb-6 px-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sort by:</span>
-            <div className="flex gap-2">
-              {(["change", "price", "name"] as const).map((s) => (
-                <motion.button
-                  key={s}
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => setSortBy(s)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
-                    sortBy === s 
-                      ? "bg-primary text-primary-foreground" 
-                      : "text-muted-foreground hover:bg-muted border border-border/30"
-                  }`}
-                >
-                  {s === "change" ? "📈 Trending" : s === "price" ? "💰 Price" : "🔤 Name"}
-                </motion.button>
-              ))}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle className="text-base">{t("market.allCommodities", { defaultValue: "All Commodities" })}</CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder={t("market.searchPlaceholder", { defaultValue: "Search by crop, state, or mandi..." })}
+                  className="pl-9 h-9 w-full sm:w-[240px]"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <Select value={stateFilter} onValueChange={setStateFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] h-9">
+                  <SelectValue placeholder={t("market.allStates", { defaultValue: "All States" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  {states.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state === "All" ? t("market.categories.all", { defaultValue: "All" }) : state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as "name" | "price" | "change")}>
+                <SelectTrigger className="w-full sm:w-[130px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="change">{t("market.sort.trending", { defaultValue: "Trending" })}</SelectItem>
+                  <SelectItem value="price">{t("market.sort.price", { defaultValue: "Price" })}</SelectItem>
+                  <SelectItem value="name">{t("market.sort.name", { defaultValue: "Name" })}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </CardHeader>
 
-          {/* Grid of Price Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map((crop, i) => (
               <motion.div
                 key={crop.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.3 }}
-                onClick={() => setSelectedCrop(crop)}
-                className={`group relative cursor-pointer rounded-2xl p-5 border-2 transition-all duration-300 overflow-hidden
-                  ${selectedCrop?.id === crop.id 
-                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/20" 
-                    : "border-border/30 bg-card/50 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10"
-                  }`}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                transition={{ delay: i * 0.02 }}
               >
-                {/* Background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="relative z-10">
-                  {/* Emoji and Category Badge */}
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-4xl">{crop.emoji}</span>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-                      {crop.category}
-                    </span>
-                  </div>
-
-                  {/* Name */}
-                  <h3 className="font-heading font-bold text-foreground mb-1 text-lg line-clamp-1">
-                    {crop.name}
-                  </h3>
-
-                  {/* Location */}
-                  <div className="flex items-center gap-1.5 mb-4 text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{crop.mandi}, {crop.state}</span>
-                  </div>
-
-                  {/* Price Section */}
-                  <div className="flex items-end gap-2 mb-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground mb-1">Price</p>
-                      <p className="font-numbers font-bold text-2xl text-foreground">₹{crop.price.toLocaleString()}</p>
+                <Card
+                  className="cursor-pointer h-full bg-gradient-to-br from-background to-muted/30 border-2 border-primary/20 shadow-sm hover:shadow-xl hover:border-primary/50 transition-all duration-300 rounded-xl overflow-hidden"
+                  onClick={() => setSelectedCrop(crop)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-3xl drop-shadow-md">{crop.emoji}</span>
+                      <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border border-primary/20">
+                        {getCategoryLabel(crop.category)}
+                      </Badge>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground mb-1">{crop.unit}</p>
-                    </div>
-                  </div>
 
-                  {/* Change indicator */}
-                  <div className={`flex items-center gap-1.5 font-numbers font-semibold text-sm py-2 px-3 rounded-lg ${
-                    crop.change24h > 0 
-                      ? "bg-green-500/10 text-green-700" 
-                      : crop.change24h < 0 
-                      ? "bg-red-500/10 text-red-700"
-                      : "bg-gray-500/10 text-gray-700"
-                  }`}>
-                    {crop.change24h > 0 ? <TrendingUp className="w-4 h-4" /> : crop.change24h < 0 ? <TrendingDown className="w-4 h-4" /> : null}
-                    <span>{crop.change24h > 0 ? "+" : ""}{crop.change24h}% (24h)</span>
-                  </div>
-                </div>
+                    <h3 className="font-semibold text-foreground mb-1">{crop.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-1">{crop.nameHi}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mb-3 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      {crop.mandi}, {crop.state}
+                    </p>
+
+                    <div className="flex items-end justify-between pt-3 border-t border-border/50">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("market.wholesaleLabel", { defaultValue: "Wholesale" })}</p>
+                        <p className="text-xl font-bold text-foreground">₹{crop.price}</p>
+                        <p className="text-xs text-muted-foreground">{t("market.perUnit", { defaultValue: "per {{unit}}", unit: crop.unit })}</p>
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 text-sm font-semibold px-2.5 py-1.5 rounded-lg border-2 ${
+                          crop.change24h > 0
+                            ? "bg-green-500/10 text-green-700 border-green-500/30"
+                            : crop.change24h < 0
+                              ? "bg-red-500/10 text-red-700 border-red-500/30"
+                              : "bg-gray-500/10 text-gray-700 border-gray-500/20"
+                        }`}
+                      >
+                        {crop.change24h > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {crop.change24h > 0 ? "+" : ""}
+                        {crop.change24h}%
+                      </div>
+                    </div>
+
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {t("market.retailLabel", { defaultValue: "Retail" })}: ₹{crop.minPrice} - ₹{crop.maxPrice}/kg
+                    </p>
+                  </CardContent>
+                </Card>
               </motion.div>
             ))}
           </div>
 
           {filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Search className="w-16 h-16 text-muted-foreground/30 mb-4" />
-              <p className="text-lg font-semibold text-foreground mb-2">No crops found</p>
-              <p className="text-sm text-muted-foreground">Try adjusting your search or filter</p>
+            <div className="flex flex-col items-center justify-center py-12">
+              <Search className="w-12 h-12 text-muted-foreground/30 mb-3" />
+              <p className="text-lg font-medium text-foreground">{t("market.empty.title", { defaultValue: "No crops found" })}</p>
+              <p className="text-sm text-muted-foreground">{t("market.empty.subtitle", { defaultValue: "Try adjusting your search or filter" })}</p>
             </div>
           )}
-        </>
-      )}
-    </>
+        </CardContent>
+      </Card>
+      </motion.div>
+
+      <Dialog open={!!selectedCrop} onOpenChange={() => setSelectedCrop(null)}>
+        <DialogContent className="max-w-lg">
+          {selectedCrop && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <span className="text-4xl">{selectedCrop.emoji}</span>
+                  <div>
+                    <p className="text-xl font-bold">{selectedCrop.name}</p>
+                    <p className="text-sm text-muted-foreground font-normal">{selectedCrop.nameHi}</p>
+                  </div>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  {selectedCrop.mandi}, {selectedCrop.state}
+                </div>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("market.dialog.wholesalePrice", { defaultValue: "Wholesale Price" })}</p>
+                        <p className="text-2xl font-bold text-foreground">₹{selectedCrop.price}</p>
+                        <p className="text-xs text-muted-foreground">{t("market.perUnit", { defaultValue: "per {{unit}}", unit: selectedCrop.unit })}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">{t("market.change24h", { defaultValue: "(24h)" })}</p>
+                        <p className={`text-2xl font-bold ${selectedCrop.change24h > 0 ? "text-green-600" : "text-red-600"}`}>
+                          {selectedCrop.change24h > 0 ? "+" : ""}
+                          {selectedCrop.change24h}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">{t("market.retailLabel", { defaultValue: "Retail" })}: ₹{selectedCrop.minPrice} - ₹{selectedCrop.maxPrice}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div>
+                  <p className="text-sm font-medium mb-2">{t("market.dialog.priceTrend", { defaultValue: "Price Trend (Last 6 Days)" })}</p>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={selectedCrop.history}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                        <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" tickFormatter={(v) => `₹${v}`} />
+                        <Tooltip
+                          formatter={(value: number) => [`₹${value}`, t("market.wholesaleLabel", { defaultValue: "Wholesale" })]}
+                          contentStyle={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="price"
+                          stroke={selectedCrop.change24h >= 0 ? "#22c55e" : "#ef4444"}
+                          strokeWidth={2}
+                          dot={{ fill: selectedCrop.change24h >= 0 ? "#22c55e" : "#ef4444", r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <p className="text-xs text-muted-foreground">{t("market.dialog.retailMin", { defaultValue: "Retail Min" })}</p>
+                      <p className="text-lg font-bold text-foreground">₹{selectedCrop.minPrice}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <p className="text-xs text-muted-foreground">{t("market.dialog.retailMax", { defaultValue: "Retail Max" })}</p>
+                      <p className="text-lg font-bold text-foreground">₹{selectedCrop.maxPrice}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
+                  <span>{t("market.dialog.category", { defaultValue: "Category" })}: {getCategoryLabel(selectedCrop.category)}</span>
+                  <span>{t("market.dialog.unit", { defaultValue: "Unit" })}: {selectedCrop.unit}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

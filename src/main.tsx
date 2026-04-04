@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
 import "./index.css";
+import "@/lib/i18n";
 
 // Suppress known harmless Three.js / WebGL driver warnings
 const _warn = console.warn.bind(console);

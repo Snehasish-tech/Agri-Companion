@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import heroImage from "@/assets/hero-ferm.png";
 import Hero3DScene from "@/components/Hero3DScene";
+import { useTranslation } from "react-i18next";
 
 /* ── Handwriting Typewriter Component ─────────────────── */
 function HandwritingText({ text, delay = 0, className = "" }: { text: string; delay?: number; className?: string }) {
@@ -60,10 +61,10 @@ function HandwritingText({ text, delay = 0, className = "" }: { text: string; de
 }
 
 const stats = [
-  { icon: Users, value: "10K+", label: "Farmers" },
-  { icon: Wheat, value: "500+", label: "Crops" },
-  { icon: TrendingUp, value: "95%", label: "Success Rate" },
-  { icon: IndianRupee, value: "₹50Cr+", label: "Transactions" },
+  { icon: Users, value: "10K+", labelKey: "stats.farmers" },
+  { icon: Wheat, value: "500+", labelKey: "stats.crops" },
+  { icon: TrendingUp, value: "95%", labelKey: "stats.successRate" },
+  { icon: IndianRupee, value: "₹50Cr+", labelKey: "stats.transactions" },
 ];
 
 const floatingCards = [
@@ -72,6 +73,12 @@ const floatingCards = [
 ];
 
 export default function HeroSection() {
+  const { t } = useTranslation();
+  const fixedHeadline = {
+    line1: "Grow Smarter",
+    connector: "with",
+  };
+
   return (
     <section className="relative min-h-[100svh] flex items-center overflow-hidden">
       {/* Background Image with Parallax Feel */}
@@ -117,7 +124,7 @@ export default function HeroSection() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
               </span>
-              <span className="text-xs sm:text-sm font-medium text-success tracking-wide">AI-Powered Smart Farming</span>
+              <span className="text-xs sm:text-sm font-medium text-success tracking-wide">{t("hero.badge")}</span>
             </motion.div>
 
             <motion.div
@@ -129,14 +136,14 @@ export default function HeroSection() {
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-[1.15]">
                 <span className="block">
                   <HandwritingText
-                    text="Grow Smarter"
+                    text={fixedHeadline.line1}
                     delay={0.5}
                     className="text-background font-bold text-[1.15em]"
                   />
                 </span>
                 <span className="block mt-1">
                   <HandwritingText
-                    text="with "
+                    text={`${fixedHeadline.connector} `}
                     delay={1.6}
                     className="text-background font-bold text-[1.15em]"
                   />
@@ -174,8 +181,7 @@ export default function HeroSection() {
               transition={{ duration: 0.7, delay: 0.5 }}
               className="text-sm sm:text-base md:text-lg text-background/75 mb-6 sm:mb-10 max-w-xl leading-relaxed"
             >
-              AI crop recommendations · Live mandi prices · Direct market connections —
-              everything a modern Indian farmer needs to earn more.
+              {t("hero.description")}
             </motion.p>
 
             <motion.div
@@ -190,7 +196,7 @@ export default function HeroSection() {
                 asChild
               >
                 <Link to="/auth">
-                  Start Free
+                  {t("hero.startFree")}
                   <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
@@ -200,7 +206,7 @@ export default function HeroSection() {
                 className="border-background/20 text-background bg-background/5 backdrop-blur-md hover:bg-background/15 hover:text-background text-sm sm:text-base px-6 sm:px-8 h-11 sm:h-13 rounded-xl flex-1 sm:flex-none min-w-0"
               >
                 <Play className="mr-2 w-4 h-4" />
-                Watch Demo
+                {t("hero.watchDemo")}
               </Button>
             </motion.div>
 
@@ -213,14 +219,14 @@ export default function HeroSection() {
             >
               {stats.map((stat, i) => (
                 <motion.div
-                  key={stat.label}
+                  key={stat.labelKey}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 + i * 0.05 }} // Reduced from 0.9, 0.1
                   className="text-center"
                 >
                   <div className="font-mono font-bold text-xl sm:text-2xl md:text-3xl text-background">{stat.value}</div>
-                  <div className="text-[10px] sm:text-xs text-background/50 mt-0.5 uppercase tracking-wider">{stat.label}</div>
+                  <div className="text-[10px] sm:text-xs text-background/50 mt-0.5 uppercase tracking-wider">{t(stat.labelKey)}</div>
                 </motion.div>
               ))}
             </motion.div>

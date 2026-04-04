@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import logo from "@/assets/logo.jpg";
+import { useTranslation } from "react-i18next";
 
 type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 
@@ -43,26 +44,26 @@ interface Order {
 
 const statusConfig: Record<
   OrderStatus,
-  { label: string; icon: React.ElementType; color: string }
+  { labelKey: string; icon: React.ElementType; color: string }
 > = {
-  pending:   { label: "Pending",   icon: Clock,        color: "bg-warning/15 text-warning" },
-  confirmed: { label: "Confirmed", icon: CheckCircle2, color: "bg-info/15 text-info" },
-  shipped:   { label: "Shipped",   icon: Truck,        color: "bg-accent/15 text-accent-foreground" },
-  delivered: { label: "Delivered", icon: CheckCircle2, color: "bg-success/15 text-success" },
-  cancelled: { label: "Cancelled", icon: XCircle,      color: "bg-destructive/15 text-destructive" },
+  pending:   { labelKey: "orders.status.pending",   icon: Clock,        color: "bg-warning/15 text-warning" },
+  confirmed: { labelKey: "orders.status.confirmed", icon: CheckCircle2, color: "bg-info/15 text-info" },
+  shipped:   { labelKey: "orders.status.shipped",   icon: Truck,        color: "bg-accent/15 text-accent-foreground" },
+  delivered: { labelKey: "orders.status.delivered", icon: CheckCircle2, color: "bg-success/15 text-success" },
+  cancelled: { labelKey: "orders.status.cancelled", icon: XCircle,      color: "bg-destructive/15 text-destructive" },
 };
 
-const paymentStatusConfig: Record<string, { label: string; color: string }> = {
-  paid:    { label: "Paid",   color: "bg-success/15 text-success" },
-  pending: { label: "Unpaid", color: "bg-warning/15 text-warning" },
-  cod:     { label: "COD",    color: "bg-info/15 text-info" },
+const paymentStatusConfig: Record<string, { labelKey: string; color: string }> = {
+  paid:    { labelKey: "orders.payment.paid",   color: "bg-success/15 text-success" },
+  pending: { labelKey: "orders.payment.pending", color: "bg-warning/15 text-warning" },
+  cod:     { labelKey: "orders.payment.cod",    color: "bg-info/15 text-info" },
 };
 
-const progressSteps: { status: OrderStatus; label: string }[] = [
-  { status: "pending",   label: "Ordered"   },
-  { status: "confirmed", label: "Confirmed" },
-  { status: "shipped",   label: "Shipped"   },
-  { status: "delivered", label: "Delivered" },
+const progressSteps: { status: OrderStatus; labelKey: string }[] = [
+  { status: "pending",   labelKey: "orders.progress.ordered"   },
+  { status: "confirmed", labelKey: "orders.progress.confirmed" },
+  { status: "shipped",   labelKey: "orders.progress.shipped"   },
+  { status: "delivered", labelKey: "orders.progress.delivered" },
 ];
 
 const mySales: Order[] = [
@@ -74,10 +75,10 @@ const mySales: Order[] = [
 ];
 
 const summaryStats = [
-  { icon: ShoppingCart, label: "Total Orders",    value: "24",     change: "+3 this month",       color: "text-info" },
-  { icon: TrendingUp,   label: "Total Sales",     value: "₹12.3L", change: "+18% vs last month",  color: "text-success" },
-  { icon: Package,      label: "Active Shipments",value: "5",      change: "2 arriving today",    color: "text-warning" },
-  { icon: BarChart3,    label: "Avg Order Value",  value: "₹3,450", change: "+8% growth",          color: "text-accent-foreground" },
+  { icon: ShoppingCart, labelKey: "orders.summary.totalOrders",     value: "24",     changeKey: "orders.summary.totalOrdersChange",      color: "text-info" },
+  { icon: TrendingUp,   labelKey: "orders.summary.totalSales",      value: "₹12.3L", changeKey: "orders.summary.totalSalesChange",       color: "text-success" },
+  { icon: Package,      labelKey: "orders.summary.activeShipments", value: "5",      changeKey: "orders.summary.activeShipmentsChange",  color: "text-warning" },
+  { icon: BarChart3,    labelKey: "orders.summary.avgOrderValue",   value: "₹3,450", changeKey: "orders.summary.avgOrderValueChange",   color: "text-accent-foreground" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ function OrderCard({
   const [detailOpen, setDetailOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
   const { toast } = useToast();
   const config    = statusConfig[order.status];
   const payConfig = paymentStatusConfig[order.paymentStatus || "pending"];
@@ -107,10 +109,13 @@ function OrderCard({
     (text: string) => {
       navigator.clipboard.writeText(text);
       setCopied(true);
-      toast({ title: "Copied!", description: "Token ID copied to clipboard." });
+      toast({
+        title: t("orders.toast.copiedTitle", "Copied!"),
+        description: t("orders.toast.copiedDescription", "Token ID copied to clipboard."),
+      });
       setTimeout(() => setCopied(false), 2000);
     },
-    [toast]
+    [toast, t]
   );
 
   // ── INVOICE PDF ────────────────────────────────────────────────────────────
@@ -512,7 +517,7 @@ function OrderCard({
         {order.status === "cancelled" && (
           <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none bg-red-600/5 backdrop-blur-[1px]">
             <div className="border-[8px] border-red-600/20 text-red-600/20 px-10 py-4 rounded-3xl rotate-[-15deg] font-heading font-black text-6xl uppercase tracking-[0.3em] select-none whitespace-nowrap shadow-inner">
-              Cancelled
+              {t("orders.status.cancelled", "Cancelled")}
             </div>
           </div>
         )}
@@ -551,11 +556,11 @@ function OrderCard({
             <div className="flex flex-col items-end gap-1">
               <Badge className={`${config.color} border-0 text-[11px]`}>
                 <config.icon className="w-3 h-3 mr-1" />
-                {config.label}
+                {t(config.labelKey, "Status")}
               </Badge>
               <Badge className={`${payConfig.color} border-0 text-[10px]`}>
                 <CreditCard className="w-2.5 h-2.5 mr-0.5" />
-                {payConfig.label}
+                {t(payConfig.labelKey, "Payment")}
               </Badge>
             </div>
           </div>
@@ -570,7 +575,7 @@ function OrderCard({
                 copyToClipboard(order.id);
               }}
               className="p-1 hover:bg-muted rounded-md transition-all opacity-0 group-hover:opacity-100"
-              title="Copy Token ID"
+              title={t("orders.actions.copyTokenId", "Copy Token ID")}
             >
               {copied ? (
                 <Check className="w-3 h-3 text-success" />
@@ -588,7 +593,7 @@ function OrderCard({
                 className="h-7 text-xs gradient-warm text-secondary-foreground border-0"
                 onClick={() => setPaymentOpen(true)}
               >
-                <CreditCard className="w-3 h-3 mr-1" /> Pay Now
+                <CreditCard className="w-3 h-3 mr-1" /> {t("orders.actions.payNow", "Pay Now")}
               </Button>
             )}
             <Button
@@ -597,7 +602,7 @@ function OrderCard({
               className="h-7 text-xs"
               onClick={() => setDetailOpen(true)}
             >
-              <Eye className="w-3 h-3 mr-1" /> Details
+              <Eye className="w-3 h-3 mr-1" /> {t("orders.actions.details", "Details")}
             </Button>
           </div>
         </div>
@@ -607,10 +612,17 @@ function OrderCard({
         <DialogContent className="w-full max-w-sm sm:max-w-md mx-4">
           <DialogHeader>
             <DialogTitle className="font-heading">
-              {type === "order" ? "Order" : "Sale"} Details
+              {t(type === "order" ? "orders.labels.orderDetails" : "orders.labels.saleDetails", type === "order" ? "Order Details" : "Sale Details")}
             </DialogTitle>
             <DialogDescription>
-              View complete details about your {type === "order" ? "order" : "sale"} including status, items, and payment information.
+              {t(
+                type === "order"
+                  ? "orders.labels.orderDescription"
+                  : "orders.labels.saleDescription",
+                type === "order"
+                  ? "View complete details about your order including status, items, and payment information."
+                  : "View complete details about your sale including status, items, and payment information."
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
@@ -631,7 +643,7 @@ function OrderCard({
                   const StepIcon  = statusConfig[step.status].icon;
 
                   return (
-                    <div key={step.label} className="relative z-10 flex flex-col items-center gap-2">
+                    <div key={step.labelKey} className="relative z-10 flex flex-col items-center gap-2">
                       <div
                         className={cn(
                           "w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500",
@@ -652,7 +664,7 @@ function OrderCard({
                           isCurrent ? "text-foreground font-bold" : "text-muted-foreground"
                         )}
                       >
-                        {step.label}
+                        {t(step.labelKey, "")}
                       </span>
                     </div>
                   );
@@ -663,21 +675,21 @@ function OrderCard({
             <div className="space-y-2 text-sm">
               {(
                 [
-                  ["ID",       order.id],
-                  ["Item",     order.item],
-                  ["Category", order.category],
-                  ["Quantity", order.quantity],
-                  [type === "order" ? "Seller" : "Buyer", order.counterparty],
-                  ["Location", order.location],
-                  ["Date",     order.date],
-                  ...(order.trackingId ? [["Tracking ID", order.trackingId]] : []),
-                ] as [string, string][]
-              ).map(([label, value]) => (
-                <div key={label} className="flex justify-between items-center group/row">
-                  <span className="text-muted-foreground">{label}</span>
+                  { key: "orders.fields.id", value: order.id, isCopyable: true },
+                  { key: "orders.fields.item", value: order.item },
+                  { key: "orders.fields.category", value: order.category },
+                  { key: "orders.fields.quantity", value: order.quantity },
+                  { key: type === "order" ? "orders.fields.seller" : "orders.fields.buyer", value: order.counterparty },
+                  { key: "orders.fields.location", value: order.location },
+                  { key: "orders.fields.date", value: order.date },
+                  ...(order.trackingId ? [{ key: "orders.fields.trackingId", value: order.trackingId }] : []),
+                ] as { key: string; value: string; isCopyable?: boolean }[]
+              ).map((field) => (
+                <div key={field.key} className="flex justify-between items-center group/row">
+                  <span className="text-muted-foreground">{t(field.key, field.key)}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{value}</span>
-                    {label === "ID" && (
+                    <span className="font-medium text-foreground">{field.value}</span>
+                    {field.isCopyable && (
                       <button
                         onClick={() => copyToClipboard(order.id)}
                         className="p-1 hover:bg-muted rounded-md transition-all opacity-0 group-hover/row:opacity-100"
@@ -695,7 +707,7 @@ function OrderCard({
             </div>
 
             <div className="flex justify-between items-center bg-muted rounded-lg p-3">
-              <span className="text-sm text-muted-foreground">Total Amount</span>
+              <span className="text-sm text-muted-foreground">{t("orders.labels.totalAmount", "Total Amount")}</span>
               <span className="font-mono font-bold text-lg text-foreground">
                 ₹{order.total.toLocaleString("en-IN")}
               </span>
@@ -703,15 +715,15 @@ function OrderCard({
 
             <div className="flex gap-2">
               <Badge className={`${config.color} border-0 w-fit`}>
-                <config.icon className="w-3 h-3 mr-1" /> {config.label}
+                <config.icon className="w-3 h-3 mr-1" /> {t(config.labelKey, "Status")}
               </Badge>
               <Badge className={`${payConfig.color} border-0 w-fit`}>
-                <CreditCard className="w-3 h-3 mr-1" /> {payConfig.label}
+                <CreditCard className="w-3 h-3 mr-1" /> {t(payConfig.labelKey, "Payment")}
               </Badge>
             </div>
 
             <Button variant="outline" className="w-full" onClick={handleDownloadInvoice}>
-              <Download className="w-4 h-4 mr-2" /> Download Invoice
+              <Download className="w-4 h-4 mr-2" /> {t("orders.actions.downloadInvoice", "Download Invoice")}
             </Button>
 
             {(order.status === "pending" || order.status === "confirmed") && (
@@ -729,7 +741,7 @@ function OrderCard({
                 ) : (
                   <XCircle className="w-4 h-4 mr-2" />
                 )}
-                Cancel Order
+                {t("orders.actions.cancelOrder", "Cancel Order")}
               </Button>
             )}
 
@@ -744,7 +756,7 @@ function OrderCard({
                   )
                 }
               >
-                <Truck className="w-4 h-4 mr-2" /> Track Shipment
+                <Truck className="w-4 h-4 mr-2" /> {t("orders.actions.trackShipment", "Track Shipment")}
               </Button>
             )}
 
@@ -756,7 +768,7 @@ function OrderCard({
                   setPaymentOpen(true);
                 }}
               >
-                <CreditCard className="w-4 h-4 mr-2" /> Pay ₹
+                <CreditCard className="w-4 h-4 mr-2" /> {t("orders.actions.pay", "Pay")} ₹
                 {order.total.toLocaleString("en-IN")}
               </Button>
             )}
@@ -769,7 +781,11 @@ function OrderCard({
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
           amount={order.total}
-          description={`${type === "order" ? "Order" : "Sale"} ${order.id} — ${order.item}`}
+          description={t(
+            type === "order" ? "orders.labels.paymentDescriptionOrder" : "orders.labels.paymentDescriptionSale",
+            `${type === "order" ? "Order" : "Sale"} {{id}} - {{item}}`,
+            { id: order.id, item: order.item }
+          )}
         />
       )}
     </>
@@ -781,6 +797,7 @@ function OrderCard({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Orders() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const sb = supabase as any;
@@ -812,10 +829,17 @@ export default function Orders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["myOrders", user?.id] });
-      toast({ title: "Order Cancelled", description: "Your order has been cancelled successfully." });
+      toast({
+        title: t("orders.toast.cancelledTitle", "Order Cancelled"),
+        description: t("orders.toast.cancelledDescription", "Your order has been cancelled successfully."),
+      });
     },
     onError: (err: Error) => {
-      toast({ title: "Cancellation Failed", description: err.message, variant: "destructive" });
+      toast({
+        title: t("orders.toast.cancelFailedTitle", "Cancellation Failed"),
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -859,17 +883,19 @@ export default function Orders() {
           id: safeId.startsWith("ORD-") ? safeId : safeId.slice(0, 8).toUpperCase(),
           rawId: safeId,
           item:
-            (items[0]?.name || "Agricultural Item") +
-            (items.length > 1 ? ` (+${items.length - 1} more)` : ""),
-          category:      "Marketplace",
+            (items[0]?.name || t("orders.defaults.agriculturalItem", "Agricultural Item")) +
+            (items.length > 1
+              ? t("orders.defaults.moreItemsSuffix", " (+{{count}} more)", { count: items.length - 1 })
+              : ""),
+          category:      t("orders.defaults.marketplace", "Marketplace"),
           quantity:      (items[0]?.qty || 1) + " units",
           total:         (o.total_price as number) || 0,
           date:          o.created_at
             ? new Date(o.created_at as string).toLocaleDateString()
             : new Date().toLocaleDateString(),
           status:        (o.status as OrderStatus) || "pending",
-          counterparty:  "KrishiGrow Marketplace",
-          location:      (o.shipping_address as string) || "Default Address",
+          counterparty:  t("orders.defaults.counterparty", "KrishiGrow Marketplace"),
+          location:      (o.shipping_address as string) || t("orders.defaults.defaultAddress", "Default Address"),
           paymentStatus: (o.payment_status as "paid" | "pending" | "cod") || "pending",
           trackingId:    o.tracking_id as string | undefined,
         } as Order;
@@ -899,9 +925,9 @@ export default function Orders() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl font-heading font-bold text-foreground"
         >
-          Orders & Sales
+          {t("orders.title", "Orders & Sales")}
         </motion.h1>
-        <p className="text-muted-foreground mt-1">Track your purchases and manage your sales</p>
+        <p className="text-muted-foreground mt-1">{t("orders.subtitle", "Track your purchases and manage your sales")}</p>
       </div>
 
       {/* Summary Stats */}
@@ -913,13 +939,13 @@ export default function Orders() {
       >
         {summaryStats.map((s) => (
           <div
-            key={s.label}
+            key={s.labelKey}
             className="glass-card rounded-xl p-4 hover:shadow-[var(--shadow-hover)] transition-all"
           >
             <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
             <div className="font-mono font-bold text-xl text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground">{s.label}</div>
-            <div className="text-[11px] text-success mt-1">{s.change}</div>
+            <div className="text-xs text-muted-foreground">{t(s.labelKey, "")}</div>
+            <div className="text-[11px] text-success mt-1">{t(s.changeKey, "")}</div>
           </div>
         ))}
       </motion.div>
@@ -934,7 +960,7 @@ export default function Orders() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by Item, Counterparty or Token ID..."
+            placeholder={t("orders.searchPlaceholder", "Search by Item, Counterparty or Token ID...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -943,15 +969,15 @@ export default function Orders() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-44">
             <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("orders.statusPlaceholder", "Status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="shipped">Shipped</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t("orders.filters.allStatuses", "All Statuses")}</SelectItem>
+            <SelectItem value="pending">{t("orders.status.pending", "Pending")}</SelectItem>
+            <SelectItem value="confirmed">{t("orders.status.confirmed", "Confirmed")}</SelectItem>
+            <SelectItem value="shipped">{t("orders.status.shipped", "Shipped")}</SelectItem>
+            <SelectItem value="delivered">{t("orders.status.delivered", "Delivered")}</SelectItem>
+            <SelectItem value="cancelled">{t("orders.status.cancelled", "Cancelled")}</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>
@@ -960,10 +986,10 @@ export default function Orders() {
       <Tabs defaultValue="orders" onValueChange={setActiveTab}>
         <TabsList className="bg-muted">
           <TabsTrigger value="orders" className="gap-1.5">
-            <ShoppingCart className="w-4 h-4" /> My Orders
+            <ShoppingCart className="w-4 h-4" /> {t("orders.tabs.myOrders", "My Orders")}
           </TabsTrigger>
           <TabsTrigger value="sales" className="gap-1.5">
-            <TrendingUp className="w-4 h-4" /> Selling Items
+            <TrendingUp className="w-4 h-4" /> {t("orders.tabs.sellingItems", "Selling Items")}
           </TabsTrigger>
         </TabsList>
 
@@ -971,7 +997,7 @@ export default function Orders() {
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="text-muted-foreground animate-pulse">Fetching your orders...</p>
+              <p className="text-muted-foreground animate-pulse">{t("orders.loading", "Fetching your orders...")}</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
@@ -994,7 +1020,7 @@ export default function Orders() {
           {!isLoading && filteredOrdersData.length === 0 && (
             <div className="text-center py-16">
               <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No orders found</p>
+              <p className="text-muted-foreground">{t("orders.empty.orders", "No orders found")}</p>
             </div>
           )}
         </TabsContent>
@@ -1019,7 +1045,7 @@ export default function Orders() {
           {filteredOrdersData.length === 0 && (
             <div className="text-center py-16">
               <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No sales found</p>
+              <p className="text-muted-foreground">{t("orders.empty.sales", "No sales found")}</p>
             </div>
           )}
         </TabsContent>

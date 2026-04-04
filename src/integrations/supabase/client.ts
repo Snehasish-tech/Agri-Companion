@@ -5,6 +5,31 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+function hasUsableSession(parsed: unknown): boolean {
+  if (!parsed || typeof parsed !== 'object') return false;
+
+  const root = parsed as Record<string, unknown>;
+  const session = (root.currentSession && typeof root.currentSession === 'object'
+    ? (root.currentSession as Record<string, unknown>)
+    : root) as Record<string, unknown>;
+
+  const user = session.user && typeof session.user === 'object'
+    ? (session.user as Record<string, unknown>)
+    : root.user && typeof root.user === 'object'
+      ? (root.user as Record<string, unknown>)
+      : null;
+
+  const userId = user?.id;
+  const accessToken = session.access_token ?? root.access_token;
+  const refreshToken = session.refresh_token ?? root.refresh_token;
+
+  return (
+    typeof userId === 'string' && userId.length > 0 &&
+    typeof accessToken === 'string' && accessToken.length > 0 &&
+    typeof refreshToken === 'string' && refreshToken.length > 0
+  );
+}
+
 function clearBrokenAuthToken() {
   if (typeof window === 'undefined') return;
 
@@ -17,18 +42,7 @@ function clearBrokenAuthToken() {
 
     try {
       const parsed = JSON.parse(raw);
-      // Only clear if token is completely malformed (missing user.id)
-      // Do NOT clear valid tokens just because refresh_token is missing
-      if (parsed && typeof parsed === 'object') {
-        // Check for valid session structure
-        const hasValidSession = 
-          (parsed?.user?.id && typeof parsed.user.id === 'string') ||
-          (parsed?.currentSession?.user?.id && typeof parsed.currentSession.user.id === 'string');
-        
-        if (!hasValidSession) {
-          localStorage.removeItem(authKey);
-        }
-      } else {
+      if (!hasUsableSession(parsed)) {
         localStorage.removeItem(authKey);
       }
     } catch (parseError) {
@@ -44,10 +58,7 @@ function clearBrokenAuthToken() {
           const raw = localStorage.getItem(key);
           if (!raw) return;
           const parsed = JSON.parse(raw);
-          const hasValidSession = 
-            (parsed?.user?.id && typeof parsed.user.id === 'string') ||
-            (parsed?.currentSession?.user?.id && typeof parsed.currentSession.user.id === 'string');
-          if (!hasValidSession) {
+          if (!hasUsableSession(parsed)) {
             localStorage.removeItem(key);
           }
         } catch {

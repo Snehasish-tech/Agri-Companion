@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Warehouse, Snowflake, ThermometerSun, MapPin, Star, IndianRupee,
   Search, Filter, Calendar, Phone, User, Package, ArrowRight,
@@ -139,24 +140,25 @@ const facilities: Facility[] = [
   { id: "55", name: "Imphal Agri Depot", type: "warehouse", location: "Imphal", state: "Manipur", distance: "6 km", rating: 4.1, reviews: 37, pricePerQuintal: 20, capacity: "3,000 MT", available: "1,400 MT", features: ["Security", "CCTV", "Fumigation"], image: img(6), verified: true },
 ];
 
-const typeConfig: Record<FacilityType, { label: string; icon: typeof Warehouse; color: string; bg: string }> = {
-  cold: { label: "Cold Storage", icon: Snowflake, color: "text-blue-400", bg: "bg-blue-400/15" },
-  warehouse: { label: "Warehouse", icon: Warehouse, color: "text-amber-400", bg: "bg-amber-400/15" },
-  silo: { label: "Grain Silo", icon: ThermometerSun, color: "text-emerald-400", bg: "bg-emerald-400/15" },
-  ca: { label: "CA Store", icon: Wind, color: "text-purple-400", bg: "bg-purple-400/15" },
-  frozen: { label: "Frozen", icon: Zap, color: "text-cyan-400", bg: "bg-cyan-400/15" },
+const typeKeys: Record<FacilityType, { key: string; icon: typeof Warehouse; color: string; bg: string }> = {
+  cold: { key: "storage.typeFilters.cold", icon: Snowflake, color: "text-blue-400", bg: "bg-blue-400/15" },
+  warehouse: { key: "storage.typeFilters.warehouse", icon: Warehouse, color: "text-amber-400", bg: "bg-amber-400/15" },
+  silo: { key: "storage.typeFilters.silo", icon: ThermometerSun, color: "text-emerald-400", bg: "bg-emerald-400/15" },
+  ca: { key: "storage.typeFilters.ca", icon: Wind, color: "text-purple-400", bg: "bg-purple-400/15" },
+  frozen: { key: "storage.typeFilters.frozen", icon: Zap, color: "text-cyan-400", bg: "bg-cyan-400/15" },
 };
 
 const stats = [
-  { icon: Warehouse, value: "55+", label: "Verified Facilities", color: "text-primary" },
-  { icon: ShieldCheck, value: "100%", label: "Insured Storage", color: "text-emerald-400" },
-  { icon: Truck, value: "24hr", label: "Delivery Support", color: "text-amber-400" },
-  { icon: Clock, value: "Instant", label: "Booking Confirmation", color: "text-blue-400" },
+  { icon: Warehouse, value: "55+", label: "storage.common.verifiedFacilities", color: "text-primary" },
+  { icon: ShieldCheck, value: "100%", label: "storage.common.insuredStorage", color: "text-emerald-400" },
+  { icon: Truck, value: "24hr", label: "storage.common.deliverySupport", color: "text-amber-400" },
+  { icon: Clock, value: "Instant", label: "storage.common.bookingConfirmation", color: "text-blue-400" },
 ];
 
 const ALL_STATES = ["All States", ...Array.from(new Set(facilities.map(f => f.state))).sort()];
 
 export default function Storage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("All States");
@@ -172,6 +174,14 @@ export default function Storage() {
     commodity: "", quantity: "", startDate: "", duration: "1",
     contactName: "", contactPhone: "",
   });
+
+  const typeConfig = Object.entries(typeKeys).reduce((acc, [key, cfg]) => ({
+    ...acc,
+    [key]: {
+      ...cfg,
+      label: t(cfg.key, { defaultValue: cfg.key })
+    }
+  }), {} as Record<FacilityType, { label: string; icon: typeof Warehouse; color: string; bg: string }>);
 
   const bookingAmount = selectedFacility
     ? selectedFacility.pricePerQuintal * Number(bookingForm.quantity || 0) * Number(bookingForm.duration)
@@ -208,11 +218,11 @@ export default function Storage() {
   const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingForm.commodity || !bookingForm.quantity || !bookingForm.startDate || !bookingForm.contactName || !bookingForm.contactPhone) {
-      toast.error("Please fill all required fields");
+      toast.error(t("storage.booking.requiredFields", { defaultValue: "Please fill all required fields" }));
       return;
     }
     if (bookingAmount <= 0) {
-      toast.error("Please enter a valid quantity");
+      toast.error(t("storage.booking.validQuantity", { defaultValue: "Please enter a valid quantity" }));
       return;
     }
     setBookingOpen(false);
@@ -220,8 +230,8 @@ export default function Storage() {
   };
 
   const handlePaymentSuccess = () => {
-    toast.success(`Booking confirmed for ${selectedFacility?.name}!`, {
-      description: `${bookingForm.quantity} quintals of ${bookingForm.commodity} starting ${bookingForm.startDate}`,
+    toast.success(t("storage.booking.confirmed", { defaultValue: "Booking confirmed" }) + ` ${selectedFacility?.name}!`, {
+      description: `${bookingForm.quantity} ${t("storage.booking.quintals", { defaultValue: "quintals" })} ${t("storage.booking.of", { defaultValue: "of" })} ${bookingForm.commodity} ${t("storage.booking.starting", { defaultValue: "starting" })} ${bookingForm.startDate}`,
     });
     setBookingForm({ commodity: "", quantity: "", startDate: "", duration: "1", contactName: "", contactPhone: "" });
   };
@@ -236,10 +246,10 @@ export default function Storage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl font-heading font-bold text-foreground"
           >
-            Storage Booking
+            {t("storage.title", { defaultValue: "Storage Solutions" })}
           </motion.h1>
           <p className="text-muted-foreground mt-1">
-            Find and book cold storage, warehouses & silos across India
+            {t("storage.subtitle", { defaultValue: "Cold storage, warehouses & silos to keep your harvest fresh" })}
           </p>
         </div>
         <motion.div
@@ -248,7 +258,7 @@ export default function Storage() {
           className="flex items-center gap-2 text-sm text-muted-foreground"
         >
           <BarChart3 className="w-4 h-4" />
-          <span>{filtered.length} facilities found</span>
+          <span>{filtered.length} {t("storage.common.facilitiesFound", { defaultValue: "facilities found" })}</span>
         </motion.div>
       </div>
 
@@ -266,7 +276,7 @@ export default function Storage() {
           >
             <stat.icon className={`w-6 h-6 mx-auto mb-2 ${stat.color}`} />
             <div className="font-mono font-bold text-xl text-foreground">{stat.value}</div>
-            <div className="text-xs text-muted-foreground">{stat.label}</div>
+            <div className="text-xs text-muted-foreground">{t(stat.label, { defaultValue: stat.label })}</div>
           </div>
         ))}
       </motion.div>
@@ -282,7 +292,7 @@ export default function Storage() {
           onClick={() => setTypeFilter("all")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${typeFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}
         >
-          <Layers className="w-3.5 h-3.5" /> All Types
+          <Layers className="w-3.5 h-3.5" /> {t("storage.typeFilters.all", { defaultValue: "All Types" })}
         </button>
         {Object.entries(typeConfig).map(([key, cfg]) => (
           <button
@@ -306,7 +316,7 @@ export default function Storage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, city, or state..."
+              placeholder={t("storage.searchPlaceholder", { defaultValue: "Search by name, location, or type..." })}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setVisibleCount(12); }}
               className="pl-10"
@@ -317,7 +327,7 @@ export default function Storage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${showFilters ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
           >
             <SlidersHorizontal className="w-4 h-4" />
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden sm:inline">{t("storage.common.filters", { defaultValue: "Filters" })}</span>
           </button>
           <div className="flex border border-border rounded-lg overflow-hidden">
             <button
@@ -346,30 +356,30 @@ export default function Storage() {
               <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setVisibleCount(12); }}>
                 <SelectTrigger className="sm:w-52">
                   <MapPin className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="State" />
+                  <SelectValue placeholder={t("storage.filters.state", { defaultValue: "State" })} />
                 </SelectTrigger>
                 <SelectContent>
                   {ALL_STATES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>{s === "All States" ? t("storage.allStates", { defaultValue: "All States" }) : s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="sm:w-52">
-                  <SelectValue placeholder="Sort by" />
+                  <SelectValue placeholder={t("storage.filters.sortBy", { defaultValue: "Sort by" })} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rating">⭐ Top Rated</SelectItem>
-                  <SelectItem value="price_asc">↑ Lowest Price</SelectItem>
-                  <SelectItem value="price_desc">↓ Highest Price</SelectItem>
-                  <SelectItem value="reviews">💬 Most Reviewed</SelectItem>
+                  <SelectItem value="rating">{t("storage.sortOptions.rating", { defaultValue: "Best Rating" })}</SelectItem>
+                  <SelectItem value="price_asc">{t("storage.sortOptions.price", { defaultValue: "Lowest Price" })}</SelectItem>
+                  <SelectItem value="price_desc">{t("storage.sortOptions.priceDesc", { defaultValue: "Highest Price" })}</SelectItem>
+                  <SelectItem value="reviews">{t("storage.sortOptions.reviews", { defaultValue: "Most Reviewed" })}</SelectItem>
                 </SelectContent>
               </Select>
               <button
                 onClick={() => { setSearch(""); setTypeFilter("all"); setStateFilter("All States"); setSortBy("rating"); setVisibleCount(12); }}
                 className="px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-all"
               >
-                Clear All
+                {t("storage.common.clearAll", { defaultValue: "Clear All" })}
               </button>
             </motion.div>
           )}
@@ -379,18 +389,17 @@ export default function Storage() {
       {/* Grid / List View */}
       {viewMode === "grid" ? (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {visibleFacilities.map((facility, i) => {
               const config = typeConfig[facility.type];
               return (
                 <motion.div
                   key={facility.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                  className="glass-card-hover rounded-xl overflow-hidden group"
+                  transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.16) }}
+                  className="glass-card rounded-xl overflow-hidden group hover:shadow-[var(--shadow-hover)]"
                 >
                   <div className="relative h-44 overflow-hidden">
                     <img
@@ -406,7 +415,7 @@ export default function Storage() {
                     </span>
                     {facility.verified && (
                       <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/90 text-white">
-                        <CheckCircle2 className="w-3 h-3" /> Verified
+                        <CheckCircle2 className="w-3 h-3" /> {t("storage.facilityDetails.verified", { defaultValue: "Verified" })}
                       </span>
                     )}
                     {facility.tag && (
@@ -439,13 +448,13 @@ export default function Storage() {
                       <div className="flex items-center font-mono font-semibold text-foreground">
                         <IndianRupee className="w-3.5 h-3.5" />
                         {facility.pricePerQuintal}
-                        <span className="text-muted-foreground font-normal text-xs ml-0.5">/qtl/mo</span>
+                        <span className="text-muted-foreground font-normal text-xs ml-0.5">{t("storage.facilityDetails.perQtlMonth", { defaultValue: "/qtl/mo" })}</span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Capacity: {facility.capacity}</span>
-                      <span className="text-emerald-500 font-medium">Available: {facility.available}</span>
+                      <span>{t("storage.facilityDetails.capacity", { defaultValue: "Capacity" })}: {facility.capacity}</span>
+                      <span className="text-emerald-500 font-medium">{t("storage.facilityDetails.available", { defaultValue: "Available" })}: {facility.available}</span>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
@@ -461,7 +470,7 @@ export default function Storage() {
                       onClick={() => handleBook(facility)}
                       className="w-full gradient-hero text-primary-foreground border-0 hover:opacity-90 group/btn"
                     >
-                      <CreditCard className="w-4 h-4 mr-1" /> Book & Pay
+                      <CreditCard className="w-4 h-4 mr-1" /> {t("storage.facilityDetails.bookNow", { defaultValue: "Book Now" })}
                       <ArrowRight className="w-4 h-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
                     </Button>
                   </div>
@@ -473,18 +482,17 @@ export default function Storage() {
       ) : (
         // List View
         <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {visibleFacilities.map((facility, i) => {
               const config = typeConfig[facility.type];
               return (
                 <motion.div
                   key={facility.id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ delay: Math.min(i * 0.03, 0.25) }}
-                  className="glass-card-hover rounded-xl overflow-hidden"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, delay: Math.min(i * 0.015, 0.12) }}
+                  className="glass-card rounded-xl overflow-hidden hover:shadow-[var(--shadow-hover)]"
                 >
                   <div className="flex gap-0">
                     <div className="relative w-32 sm:w-48 flex-shrink-0 overflow-hidden">
@@ -506,7 +514,7 @@ export default function Storage() {
                           <h3 className="font-heading font-semibold text-foreground">{facility.name}</h3>
                           {facility.verified && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
-                              <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+                              <CheckCircle2 className="w-2.5 h-2.5" /> {t("storage.facilityDetails.verified", { defaultValue: "Verified" })}
                             </span>
                           )}
                           {facility.tag && (
@@ -523,8 +531,8 @@ export default function Storage() {
                           <span className={`inline-flex items-center gap-1 ${config.color}`}>
                             <config.icon className="w-3.5 h-3.5" />{config.label}
                           </span>
-                          <span className="text-muted-foreground">Cap: {facility.capacity}</span>
-                          <span className="text-emerald-500 font-medium">Avail: {facility.available}</span>
+                          <span className="text-muted-foreground">{t("storage.facilityDetails.capacity", { defaultValue: "Capacity" })}: {facility.capacity}</span>
+                          <span className="text-emerald-500 font-medium">{t("storage.facilityDetails.available", { defaultValue: "Available" })}: {facility.available}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {facility.features.slice(0, 4).map((f) => (
@@ -543,14 +551,14 @@ export default function Storage() {
                             <IndianRupee className="w-4 h-4" />
                             {facility.pricePerQuintal}
                           </div>
-                          <div className="text-xs text-muted-foreground text-right">per qtl/month</div>
+                          <div className="text-xs text-muted-foreground text-right">{t("storage.facilityDetails.perQtlMonthLong", { defaultValue: "per qtl/month" })}</div>
                         </div>
                         <Button
                           onClick={() => handleBook(facility)}
                           size="sm"
                           className="gradient-hero text-primary-foreground border-0 hover:opacity-90 whitespace-nowrap"
                         >
-                          <CreditCard className="w-3.5 h-3.5 mr-1" /> Book Now
+                          <CreditCard className="w-3.5 h-3.5 mr-1" /> {t("storage.facilityDetails.bookNow", { defaultValue: "Book Now" })}
                         </Button>
                       </div>
                     </div>
@@ -571,7 +579,7 @@ export default function Storage() {
             className="gap-2"
           >
             <ChevronDown className="w-4 h-4" />
-            Load More ({filtered.length - visibleCount} remaining)
+            {t("storage.common.loadMore", { defaultValue: "Load More Facilities" })} ({filtered.length - visibleCount} {t("storage.common.remaining", { defaultValue: "remaining" })})
           </Button>
         </motion.div>
       )}
@@ -579,12 +587,12 @@ export default function Storage() {
       {filtered.length === 0 && (
         <div className="text-center py-16">
           <Warehouse className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground">No facilities found matching your criteria</p>
+          <p className="text-muted-foreground">{t("storage.common.noResults", { defaultValue: "No storage facilities found" })}</p>
           <button
             onClick={() => { setSearch(""); setTypeFilter("all"); setStateFilter("All States"); }}
             className="mt-3 text-sm text-primary hover:underline"
           >
-            Clear filters
+            {t("storage.common.clearFilters", { defaultValue: "Clear filters" })}
           </button>
         </div>
       )}
@@ -593,7 +601,7 @@ export default function Storage() {
       <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
         <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-lg mx-4">
           <DialogHeader>
-            <DialogTitle className="font-heading">Book Storage</DialogTitle>
+            <DialogTitle className="font-heading">{t("storage.facilityDetails.bookNow", { defaultValue: "Book Storage" })}</DialogTitle>
             <DialogDescription>
               {selectedFacility && (
                 <span className="flex items-center gap-1.5 mt-1">
@@ -607,35 +615,35 @@ export default function Storage() {
           <form onSubmit={handleSubmitBooking} className="space-y-4 mt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Commodity *</label>
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.commodity", { defaultValue: "Commodity" })} *</label>
                 <div className="relative">
                   <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="e.g. Wheat, Rice" value={bookingForm.commodity} onChange={(e) => setBookingForm({ ...bookingForm, commodity: e.target.value })} className="pl-10" maxLength={100} />
+                  <Input placeholder={t("storage.booking.commodityPlaceholder", { defaultValue: "e.g. Wheat, Rice" })} value={bookingForm.commodity} onChange={(e) => setBookingForm({ ...bookingForm, commodity: e.target.value })} className="pl-10" maxLength={100} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Quantity (Quintals) *</label>
-                <Input type="number" placeholder="e.g. 100" value={bookingForm.quantity} onChange={(e) => setBookingForm({ ...bookingForm, quantity: e.target.value })} min="1" max="100000" />
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.quantity", { defaultValue: "Quantity (Quintals)" })} *</label>
+                <Input type="number" placeholder={t("storage.booking.quantityPlaceholder", { defaultValue: "e.g. 100" })} value={bookingForm.quantity} onChange={(e) => setBookingForm({ ...bookingForm, quantity: e.target.value })} min="1" max="100000" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Start Date *</label>
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.startDate", { defaultValue: "Start Date" })} *</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="pl-10" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Duration</label>
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.duration", { defaultValue: "Duration" })}</label>
                 <Select value={bookingForm.duration} onValueChange={(v) => setBookingForm({ ...bookingForm, duration: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 Month</SelectItem>
-                    <SelectItem value="3">3 Months</SelectItem>
-                    <SelectItem value="6">6 Months</SelectItem>
-                    <SelectItem value="12">12 Months</SelectItem>
+                    <SelectItem value="1">1 {t("storage.booking.month", { defaultValue: "Month" })}</SelectItem>
+                    <SelectItem value="3">3 {t("storage.booking.months", { defaultValue: "Months" })}</SelectItem>
+                    <SelectItem value="6">6 {t("storage.booking.months", { defaultValue: "Months" })}</SelectItem>
+                    <SelectItem value="12">12 {t("storage.booking.months", { defaultValue: "Months" })}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -643,14 +651,14 @@ export default function Storage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Contact Name *</label>
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.contactName", { defaultValue: "Contact Name" })} *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Your name" value={bookingForm.contactName} onChange={(e) => setBookingForm({ ...bookingForm, contactName: e.target.value })} className="pl-10" maxLength={100} />
+                  <Input placeholder={t("storage.booking.contactNamePlaceholder", { defaultValue: "Your name" })} value={bookingForm.contactName} onChange={(e) => setBookingForm({ ...bookingForm, contactName: e.target.value })} className="pl-10" maxLength={100} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Phone *</label>
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.phone", { defaultValue: "Phone" })} *</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="+91 XXXXX XXXXX" value={bookingForm.contactPhone} onChange={(e) => setBookingForm({ ...bookingForm, contactPhone: e.target.value })} className="pl-10" maxLength={15} />
@@ -661,22 +669,22 @@ export default function Storage() {
             {selectedFacility && (
               <div className="bg-muted rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Rate</span>
+                  <span className="text-muted-foreground">{t("storage.booking.rate", { defaultValue: "Rate" })}</span>
                   <span className="font-mono text-foreground">₹{selectedFacility.pricePerQuintal}/qtl/month</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Quantity × Duration</span>
+                  <span className="text-muted-foreground">{t("storage.booking.quantityDuration", { defaultValue: "Quantity × Duration" })}</span>
                   <span className="font-mono text-foreground">{bookingForm.quantity || 0} qtl × {bookingForm.duration} mo</span>
                 </div>
                 <div className="border-t border-border pt-2 flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">Total Amount</span>
+                  <span className="text-sm font-medium text-foreground">{t("storage.booking.totalAmount", { defaultValue: "Total Amount" })}</span>
                   <span className="font-mono font-bold text-lg text-foreground">₹{bookingAmount.toLocaleString("en-IN")}</span>
                 </div>
               </div>
             )}
 
             <Button type="submit" className="w-full gradient-warm text-secondary-foreground border-0 hover:opacity-90 h-11">
-              <CreditCard className="w-4 h-4 mr-2" /> Proceed to Payment
+              <CreditCard className="w-4 h-4 mr-2" /> {t("storage.booking.proceedToPayment", { defaultValue: "Proceed to Payment" })}
             </Button>
           </form>
         </DialogContent>

@@ -9,6 +9,7 @@ import {
 import { useWeather } from "@/hooks/useWeather";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "react-i18next";
 
 // Fallback mock data for Kolkata region (used when API fails)
 const fallbackWeather = {
@@ -91,6 +92,7 @@ const rainfallData = [
 ];
 
 export default function Weather() {
+  const { t } = useTranslation();
   const [selectedDay, setSelectedDay] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -150,7 +152,7 @@ export default function Weather() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="text-muted-foreground">Loading weather data...</p>
+        <p className="text-muted-foreground">{t("weather.loading", { defaultValue: "Loading weather data..." })}</p>
       </div>
     );
   }
@@ -160,9 +162,11 @@ export default function Weather() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-heading font-bold text-foreground">🌤️ Weather Intelligence</h1>
+            <h1 className="text-2xl font-heading font-bold text-foreground">🌤️ {t("weather.title", { defaultValue: "Weather Intelligence" })}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {error ? "Using cached data" : "Real-time weather data & agricultural advisories"}
+              {error
+                ? t("weather.cachedData", { defaultValue: "Using cached data" })
+                : t("weather.realtimeSubtitle", { defaultValue: "Real-time weather data & agricultural advisories" })}
             </p>
           </div>
           
@@ -173,7 +177,7 @@ export default function Weather() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search location..."
+                  placeholder={t("weather.searchPlaceholder", { defaultValue: "Search location..." })}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 pr-8"
@@ -194,7 +198,7 @@ export default function Weather() {
                 variant="outline"
                 size="icon"
                 onClick={handleGetCurrentLocation}
-                title="Use current location"
+                title={t("weather.useCurrentLocation", { defaultValue: "Use current location" })}
                 className="shrink-0"
               >
                 <Navigation className="w-4 h-4" />
@@ -213,7 +217,7 @@ export default function Weather() {
                   {isSearching ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                      Searching...
+                      {t("weather.searching", { defaultValue: "Searching..." })}
                     </div>
                   ) : searchResults.length > 0 ? (
                     <div className="max-h-60 overflow-y-auto">
@@ -235,7 +239,7 @@ export default function Weather() {
                     </div>
                   ) : searchQuery.length >= 2 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      No locations found
+                      {t("weather.noLocations", { defaultValue: "No locations found" })}
                     </div>
                   ) : null}
                 </motion.div>
@@ -267,10 +271,10 @@ export default function Weather() {
         >
           <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-sm text-foreground">API Configuration Required</p>
+            <p className="font-medium text-sm text-foreground">{t("weather.apiConfigRequired", { defaultValue: "API Configuration Required" })}</p>
             <p className="text-xs text-muted-foreground mt-1">{error}</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Get a free API key from{" "}
+              {t("weather.apiHelpPrefix", { defaultValue: "Get a free API key from" })}{" "}
               <a
                 href="https://openweathermap.org/api"
                 target="_blank"
@@ -279,7 +283,7 @@ export default function Weather() {
               >
                 OpenWeatherMap
               </a>{" "}
-              and add it to your .env file as VITE_OPENWEATHERMAP_API_KEY
+              {t("weather.apiHelpSuffix", { defaultValue: "and add it to your .env file as VITE_OPENWEATHERMAP_API_KEY" })}
             </p>
           </div>
         </motion.div>
@@ -302,7 +306,7 @@ export default function Weather() {
                 <span className="font-numbers text-6xl font-bold text-foreground">{displayData.current.temp}°</span>
                 <div className="pb-2">
                   <p className="text-foreground font-medium">{displayData.current.condition}</p>
-                  <p className="text-sm text-muted-foreground">Feels like {displayData.current.feelsLike}°C</p>
+                  <p className="text-sm text-muted-foreground">{t("weather.feelsLike", { defaultValue: "Feels like {{temp}}°C", temp: displayData.current.feelsLike })}</p>
                 </div>
               </div>
             </div>
@@ -313,14 +317,14 @@ export default function Weather() {
 
           {/* Weather Details Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <WeatherDetail icon={Droplets} label="Humidity" value={`${displayData.current.humidity}%`} />
-            <WeatherDetail icon={Wind} label="Wind" value={`${displayData.current.windSpeed} km/h ${displayData.current.windDir}`} />
-            <WeatherDetail icon={Eye} label="Visibility" value={`${displayData.current.visibility} km`} />
-            <WeatherDetail icon={Thermometer} label="Pressure" value={`${displayData.current.pressure} hPa`} />
-            <WeatherDetail icon={Sunrise} label="Sunrise" value={displayData.current.sunrise} />
-            <WeatherDetail icon={Sunset} label="Sunset" value={displayData.current.sunset} />
-            <WeatherDetail icon={Droplets} label="Dew Point" value={`${displayData.current.dewPoint}°C`} />
-            <WeatherDetail icon={Sun} label="UV Index" value={`${displayData.current.uvIndex} (High)`} />
+            <WeatherDetail icon={Droplets} label={t("weather.details.humidity", { defaultValue: "Humidity" })} value={`${displayData.current.humidity}%`} />
+            <WeatherDetail icon={Wind} label={t("weather.details.wind", { defaultValue: "Wind" })} value={`${displayData.current.windSpeed} km/h ${displayData.current.windDir}`} />
+            <WeatherDetail icon={Eye} label={t("weather.details.visibility", { defaultValue: "Visibility" })} value={`${displayData.current.visibility} km`} />
+            <WeatherDetail icon={Thermometer} label={t("weather.details.pressure", { defaultValue: "Pressure" })} value={`${displayData.current.pressure} hPa`} />
+            <WeatherDetail icon={Sunrise} label={t("weather.details.sunrise", { defaultValue: "Sunrise" })} value={displayData.current.sunrise} />
+            <WeatherDetail icon={Sunset} label={t("weather.details.sunset", { defaultValue: "Sunset" })} value={displayData.current.sunset} />
+            <WeatherDetail icon={Droplets} label={t("weather.details.dewPoint", { defaultValue: "Dew Point" })} value={`${displayData.current.dewPoint}°C`} />
+            <WeatherDetail icon={Sun} label={t("weather.details.uvIndex", { defaultValue: "UV Index" })} value={t("weather.details.uvIndexHigh", { defaultValue: "{{value}} (High)", value: displayData.current.uvIndex })} />
           </div>
         </motion.div>
 
@@ -331,7 +335,7 @@ export default function Weather() {
           transition={{ delay: 0.1 }}
           className="glass-card rounded-2xl p-6"
         >
-          <h3 className="font-heading font-semibold text-foreground mb-4">Hourly Forecast</h3>
+          <h3 className="font-heading font-semibold text-foreground mb-4">{t("weather.hourlyForecast", { defaultValue: "Hourly Forecast" })}</h3>
           <div className="space-y-3">
             {displayData.hourly.map((h, i) => (
               <div key={h.time} className="flex items-center justify-between text-sm">
@@ -350,7 +354,7 @@ export default function Weather() {
           transition={{ delay: 0.2 }}
           className="lg:col-span-2 glass-card rounded-2xl p-6"
         >
-          <h3 className="font-heading font-semibold text-foreground mb-4">7-Day Forecast</h3>
+          <h3 className="font-heading font-semibold text-foreground mb-4">{t("weather.sevenDayForecast", { defaultValue: "7-Day Forecast" })}</h3>
           <div className="space-y-2">
             {displayData.daily.map((day, i) => (
               <button
@@ -390,7 +394,7 @@ export default function Weather() {
           transition={{ delay: 0.3 }}
           className="glass-card rounded-2xl p-6"
         >
-          <h3 className="font-heading font-semibold text-foreground mb-4">Rainfall History (mm)</h3>
+          <h3 className="font-heading font-semibold text-foreground mb-4">{t("weather.rainfallHistory", { defaultValue: "Rainfall History (mm)" })}</h3>
           <div className="flex items-end gap-2 h-40">
             {rainfallData.map((d) => (
               <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
@@ -412,7 +416,7 @@ export default function Weather() {
           transition={{ delay: 0.4 }}
           className="lg:col-span-3 glass-card rounded-2xl p-6"
         >
-          <h3 className="font-heading font-semibold text-foreground mb-4">🌾 Agricultural Advisories</h3>
+          <h3 className="font-heading font-semibold text-foreground mb-4">🌾 {t("weather.advisoriesTitle", { defaultValue: "Agricultural Advisories" })}</h3>
           <div className="grid sm:grid-cols-2 gap-4">
             {advisories.map((adv, i) => (
               <div
@@ -446,8 +450,8 @@ export default function Weather() {
                     />
                   </div>
                   <div>
-                    <p className="font-medium text-sm text-foreground">{adv.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{adv.desc}</p>
+                    <p className="font-medium text-sm text-foreground">{t(`weather.advisories.${i}.title`, { defaultValue: adv.title })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t(`weather.advisories.${i}.desc`, { defaultValue: adv.desc })}</p>
                   </div>
                 </div>
               </div>

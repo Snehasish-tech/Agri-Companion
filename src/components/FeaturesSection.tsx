@@ -1,5 +1,6 @@
 import { Bot, CloudSun, TrendingUp, ShoppingCart, Warehouse, Handshake, MessageCircle, BookOpen, Calculator, ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 const features = [
   { icon: Bot, title: "AI Crop Advisor", desc: "Get personalized crop recommendations based on your soil, climate, and market conditions.", gradient: "from-emerald-500 to-teal-400", glow: "hover:shadow-emerald-500/20" },
@@ -14,6 +15,8 @@ const features = [
 ];
 
 export default function FeaturesSection() {
+  const { t } = useTranslation();
+
   return (
     <section id="features" className="py-14 sm:py-24 bg-background grain-texture">
       <div className="container mx-auto px-4 sm:px-6">
@@ -23,19 +26,19 @@ export default function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center mb-10 sm:mb-16"
         >
-          <span className="text-sm font-semibold text-secondary uppercase tracking-wider">Everything You Need</span>
+          <span className="text-sm font-semibold text-secondary uppercase tracking-wider">{t("home.features.badge", { defaultValue: "Everything You Need" })}</span>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-foreground mt-2 mb-4">
-            One Platform, Complete <span className="text-gradient-warm">Farm Management</span>
+            {t("home.features.titlePrefix", { defaultValue: "One Platform, Complete" })} <span className="text-gradient-warm">{t("home.features.titleHighlight", { defaultValue: "Farm Management" })}</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-lg">
-            From planning and planting to selling and earning — KrishiGrowAI is your trusted farming companion.
+            {t("home.features.subtitle", { defaultValue: "From planning and planting to selling and earning — KrishiGrowAI is your trusted farming companion." })}
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {features.map((f, i) => (
             <motion.div
-              key={f.title}
+              key={`${i}-${f.title}`}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -60,10 +63,10 @@ export default function FeaturesSection() {
                 </div>
 
                 <h3 className="font-heading font-semibold text-base sm:text-lg text-foreground mb-1.5 group-hover:text-foreground transition-colors">
-                  {f.title}
+                  {t(`home.features.items.${i}.title`, { defaultValue: f.title })}
                 </h3>
                 <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                  {f.desc}
+                  {t(`home.features.items.${i}.desc`, { defaultValue: f.desc })}
                 </p>
               </div>
             </motion.div>

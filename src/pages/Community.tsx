@@ -23,15 +23,16 @@ import { useToast } from "@/hooks/use-toast";
 import { MediaUpload, MediaFile } from "@/components/MediaUpload";
 import { MediaGallery, MediaData } from "@/components/MediaGallery";
 import { uploadMediaToSupabase, getPostMedia, deletePostMedia } from "@/lib/mediaService";
+import { useTranslation } from "react-i18next";
 
 const categories = [
-  { id: "all", label: "All Topics", icon: Users },
-  { id: "crops", label: "Crop Tips", icon: Leaf },
-  { id: "pests", label: "Pest & Disease", icon: Bug },
-  { id: "weather", label: "Weather Talk", icon: CloudSun },
-  { id: "equipment", label: "Equipment", icon: Tractor },
-  { id: "market", label: "Market Trends", icon: TrendingUp },
-  { id: "help", label: "Ask for Help", icon: HelpCircle },
+  { id: "all", labelKey: "community.categories.all", fallback: "All Topics", icon: Users },
+  { id: "crops", labelKey: "community.categories.crops", fallback: "Crop Tips", icon: Leaf },
+  { id: "pests", labelKey: "community.categories.pests", fallback: "Pest & Disease", icon: Bug },
+  { id: "weather", labelKey: "community.categories.weather", fallback: "Weather Talk", icon: CloudSun },
+  { id: "equipment", labelKey: "community.categories.equipment", fallback: "Equipment", icon: Tractor },
+  { id: "market", labelKey: "community.categories.market", fallback: "Market Trends", icon: TrendingUp },
+  { id: "help", labelKey: "community.categories.help", fallback: "Ask for Help", icon: HelpCircle },
 ];
 
 interface Comment {
@@ -67,6 +68,7 @@ interface Post {
 
 export default function Community() {
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -184,7 +186,7 @@ export default function Community() {
                 created_at: string;
               }) => ({
                 id: comment.id,
-                author: commentProfileMap.get(comment.user_id) || "Farmer",
+                author: commentProfileMap.get(comment.user_id) || t("community.defaults.farmer", "Farmer"),
                 avatar: (commentProfileMap.get(comment.user_id) || "F")[0].toUpperCase(),
                 content: comment.content,
                 created_at: comment.created_at,
@@ -208,7 +210,7 @@ export default function Community() {
             liked_by_user = !!userLike;
           }
 
-          const fullName = profileMap.get(post.user_id) || "Farmer";
+          const fullName = profileMap.get(post.user_id) || t("community.defaults.farmer", "Farmer");
           
           // Fetch media for this post from database
           const media = await getPostMedia(post.id);
@@ -276,10 +278,10 @@ export default function Community() {
       setNewTags("");
       setNewPostMedia([]);
       setShowCreateDialog(false);
-      toast({ title: "Success", description: "Post published! Media is now visible to all users." });
+      toast({ title: t("community.toast.success", "Success"), description: t("community.toast.postPublished", "Post published! Media is now visible to all users.") });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t("community.toast.error", "Error"), description: error.message, variant: "destructive" });
     },
   });
 
@@ -343,7 +345,7 @@ export default function Community() {
       if (context?.previousPosts) {
         queryClient.setQueryData(["communityPosts", user?.id], context.previousPosts);
       }
-      toast({ title: "Error liking post", description: "Please try again", variant: "destructive" });
+      toast({ title: t("community.toast.likePostError", "Error liking post"), description: t("community.toast.tryAgain", "Please try again"), variant: "destructive" });
     },
   });
 
@@ -363,7 +365,7 @@ export default function Community() {
     onSuccess: () => {
       setNewComment("");
       queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
-      toast({ title: "Success", description: "Comment added!" });
+      toast({ title: t("community.toast.success", "Success"), description: t("community.toast.commentAdded", "Comment added!") });
     },
   });
 
@@ -392,7 +394,7 @@ export default function Community() {
       queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
       setShowEditDialog(false);
       setSelectedPost(null);
-      toast({ title: "Success", description: "Post updated!" });
+      toast({ title: t("community.toast.success", "Success"), description: t("community.toast.postUpdated", "Post updated!") });
     },
   });
 
@@ -413,7 +415,7 @@ export default function Community() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["communityPosts"] });
       setSelectedPost(null);
-      toast({ title: "Success", description: "Post deleted!" });
+      toast({ title: t("community.toast.success", "Success"), description: t("community.toast.postDeleted", "Post deleted!") });
     },
   });
 
@@ -492,7 +494,7 @@ export default function Community() {
       if (context?.previousPosts) {
         queryClient.setQueryData(["communityPosts", user?.id], context.previousPosts);
       }
-      toast({ title: "Error liking comment", description: "Please try again", variant: "destructive" });
+      toast({ title: t("community.toast.likeCommentError", "Error liking comment"), description: t("community.toast.tryAgain", "Please try again"), variant: "destructive" });
     },
   });
 
@@ -517,7 +519,7 @@ export default function Community() {
       return;
     }
     if (!newTitle.trim() || !newContent.trim() || !newCategory) {
-      toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
+      toast({ title: t("community.toast.error", "Error"), description: t("community.toast.fillRequired", "Please fill all required fields"), variant: "destructive" });
       return;
     }
 
@@ -583,23 +585,23 @@ export default function Community() {
 
   const handleDeletePost = () => {
     if (!selectedPost) return;
-    if (confirm("Are you sure you want to delete this post?")) {
+    if (confirm(t("community.confirmDelete", "Are you sure you want to delete this post?"))) {
       deletePostMutation.mutate(selectedPost.id);
     }
   };
 
   const handleSharePost = (post: Post) => {
-    const message = `Check out this post: "${post.title}" on Agri Companion`;
+    const message = t("community.shareMessage", "Check out this post: \"{{title}}\" on Agri Companion", { title: post.title });
     const url = `${window.location.origin}/community`;
 
     if (navigator.share) {
-      navigator.share({ title: "Agri Companion", text: message, url });
+      navigator.share({ title: t("community.appName", "Agri Companion"), text: message, url });
     } else {
       const shareUrl = `${url}?post=${post.id}`;
       navigator.clipboard.writeText(shareUrl);
       setCopiedPostId(post.id);
       setTimeout(() => setCopiedPostId(null), 2000);
-      toast({ title: "Link copied", description: "Post link copied to clipboard!" });
+      toast({ title: t("community.toast.linkCopied", "Link copied"), description: t("community.toast.linkCopiedDescription", "Post link copied to clipboard!") });
     }
   };
 
@@ -628,15 +630,18 @@ export default function Community() {
     const postDate = new Date(date);
     const seconds = Math.floor((now.getTime() - postDate.getTime()) / 1000);
 
-    if (seconds < 60) return "Just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    if (seconds < 60) return t("community.time.justNow", "Just now");
+    if (seconds < 3600) return t("community.time.minutesAgo", "{{count}}m ago", { count: Math.floor(seconds / 60) });
+    if (seconds < 86400) return t("community.time.hoursAgo", "{{count}}h ago", { count: Math.floor(seconds / 3600) });
+    if (seconds < 604800) return t("community.time.daysAgo", "{{count}}d ago", { count: Math.floor(seconds / 86400) });
     return postDate.toLocaleDateString();
   };
 
   const getCategoryLabel = (cat: string) =>
-    categories.find((c) => c.id === cat)?.label || "General";
+    t(
+      categories.find((c) => c.id === cat)?.labelKey || "community.categories.general",
+      categories.find((c) => c.id === cat)?.fallback || "General"
+    );
 
   const totalComments = posts.reduce((sum, post) => sum + (post.comments?.length || 0), 0);
   const helpPosts = posts.filter((post) => post.category === "help").length;
@@ -650,47 +655,47 @@ export default function Community() {
       <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">Community Forum</h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{t("community.title", "Community Forum")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
             {isAuthenticated
-              ? "Connect, share, and learn from fellow farmers"
-              : "Sign in to join the conversation"}
+              ? t("community.subtitle.authenticated", "Connect, share, and learn from fellow farmers")
+              : t("community.subtitle.guest", "Sign in to join the conversation")}
             </p>
           </div>
         {isAuthenticated ? (
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button className="gradient-warm text-secondary-foreground border-0 hover:opacity-90 gap-2 h-10 shadow-md">
-                <Plus className="w-4 h-4" /> New Post
+                <Plus className="w-4 h-4" /> {t("community.actions.newPost", "New Post")}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl mx-4">
               <DialogHeader>
-                <DialogTitle className="font-heading text-xl">Share Your Knowledge</DialogTitle>
+                <DialogTitle className="font-heading text-xl">{t("community.dialog.shareKnowledge", "Share Your Knowledge")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-5 pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                  <label className="text-sm font-medium mb-2 block">Post Title</label>
+                  <label className="text-sm font-medium mb-2 block">{t("community.fields.postTitle", "Post Title")}</label>
                   <Input
-                    placeholder="What's on your mind?"
+                    placeholder={t("community.fields.postTitlePlaceholder", "What's on your mind?")}
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="border-2 bg-background"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Category</label>
+                  <label className="text-sm font-medium mb-2 block">{t("community.fields.category", "Category")}</label>
                   <Select value={newCategory} onValueChange={setNewCategory}>
                     <SelectTrigger className="border-2 bg-background">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={t("community.fields.selectCategory", "Select category")} />
                     </SelectTrigger>
                     <SelectContent>
                       {categories
                         .filter((c) => c.id !== "all")
                         .map((c) => (
                           <SelectItem key={c.id} value={c.id}>
-                            {c.label}
+                            {t(c.labelKey, c.fallback)}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -698,9 +703,9 @@ export default function Community() {
                 </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Description</label>
+                  <label className="text-sm font-medium mb-2 block">{t("community.fields.description", "Description")}</label>
                   <Textarea
-                    placeholder="Share your experience, tips, or ask a question..."
+                    placeholder={t("community.fields.descriptionPlaceholder", "Share your experience, tips, or ask a question...")}
                     rows={5}
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
@@ -708,9 +713,9 @@ export default function Community() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Tags (comma-separated)</label>
+                  <label className="text-sm font-medium mb-2 block">{t("community.fields.tags", "Tags (comma-separated)")}</label>
                   <Input
-                    placeholder="e.g., wheat, organic, rabi"
+                    placeholder={t("community.fields.tagsPlaceholder", "e.g., wheat, organic, rabi")}
                     value={newTags}
                     onChange={(e) => setNewTags(e.target.value)}
                     className="border-2 bg-background"
@@ -751,7 +756,7 @@ export default function Community() {
                   disabled={createPostMutation.isPending}
                   className="w-full gradient-warm text-secondary-foreground border-0 h-10 shadow-md"
                 >
-                  {createPostMutation.isPending ? "Publishing..." : "Publish Post"}
+                  {createPostMutation.isPending ? t("community.actions.publishing", "Publishing...") : t("community.actions.publishPost", "Publish Post")}
                 </Button>
               </div>
             </DialogContent>
@@ -761,21 +766,21 @@ export default function Community() {
             onClick={() => navigate("/auth")}
             className="gradient-warm text-secondary-foreground border-0 gap-2 h-10 shadow-md"
           >
-            <LogIn className="w-4 h-4" /> Sign In to Post
+            <LogIn className="w-4 h-4" /> {t("community.actions.signInToPost", "Sign In to Post")}
           </Button>
         )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
           <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
-            <p className="text-xs text-muted-foreground">Total Posts</p>
+            <p className="text-xs text-muted-foreground">{t("community.stats.totalPosts", "Total Posts")}</p>
             <p className="text-xl font-semibold text-foreground">{posts.length}</p>
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
-            <p className="text-xs text-muted-foreground">Community Replies</p>
+            <p className="text-xs text-muted-foreground">{t("community.stats.communityReplies", "Community Replies")}</p>
             <p className="text-xl font-semibold text-foreground">{totalComments}</p>
           </div>
           <div className="rounded-xl border border-border/70 bg-background/80 px-4 py-3">
-            <p className="text-xs text-muted-foreground">Help Requests</p>
+            <p className="text-xs text-muted-foreground">{t("community.stats.helpRequests", "Help Requests")}</p>
             <p className="text-xl font-semibold text-foreground">{helpPosts}</p>
           </div>
         </div>
@@ -786,7 +791,7 @@ export default function Community() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search posts and tags..."
+            placeholder={t("community.searchPlaceholder", "Search posts and tags...")}
             className="pl-9 border-2 bg-background"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -798,9 +803,9 @@ export default function Community() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recent">Most Recent</SelectItem>
-            <SelectItem value="popular">Most Liked</SelectItem>
-            <SelectItem value="mostViewed">Most Viewed</SelectItem>
+            <SelectItem value="recent">{t("community.sort.recent", "Most Recent")}</SelectItem>
+            <SelectItem value="popular">{t("community.sort.popular", "Most Liked")}</SelectItem>
+            <SelectItem value="mostViewed">{t("community.sort.mostViewed", "Most Viewed")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -818,7 +823,7 @@ export default function Community() {
             }`}
           >
             <cat.icon className="w-4 h-4" />
-            {cat.label}
+            {t(cat.labelKey, cat.fallback)}
           </button>
         ))}
       </div>
@@ -876,7 +881,7 @@ export default function Community() {
                             />
                           ) : (
                             <div className="w-full h-56 sm:h-72 bg-black rounded-lg flex items-center justify-center">
-                              <span className="text-white text-sm font-medium">Video attached</span>
+                              <span className="text-white text-sm font-medium">{t("community.videoAttached", "Video attached")}</span>
                             </div>
                           )}
                           {post.media.length > 1 && (
@@ -940,11 +945,11 @@ export default function Community() {
         {!isLoading && filteredPosts.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-30" />
-            <p className="font-semibold text-lg">No posts found</p>
+            <p className="font-semibold text-lg">{t("community.empty.noPosts", "No posts found")}</p>
             <p className="text-sm mt-2">
               {isAuthenticated
-                ? "Be the first to post in this category!"
-                : "Sign in to start posting and joining discussions"}
+                ? t("community.empty.authenticated", "Be the first to post in this category!")
+                : t("community.empty.guest", "Sign in to start posting and joining discussions")}
             </p>
           </div>
         )}
@@ -1001,7 +1006,7 @@ export default function Community() {
 
                 {selectedPost.media && selectedPost.media.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm mb-3">Attached Media</h4>
+                    <h4 className="font-medium text-sm mb-3">{t("community.attachedMedia", "Attached Media")}</h4>
                     <MediaGallery media={selectedPost.media} />
                   </div>
                 )}
@@ -1030,10 +1035,10 @@ export default function Community() {
                     <Heart
                       className={`w-4 h-4 ${selectedPost.liked_by_user ? "fill-current" : ""}`}
                     />
-                    {selectedPost.likes_count} Likes
+                    {selectedPost.likes_count} {t("community.likes", "Likes")}
                   </button>
                   <span className="flex items-center gap-2 text-sm font-medium">
-                    <Eye className="w-4 h-4" /> {selectedPost.views_count} Views
+                    <Eye className="w-4 h-4" /> {selectedPost.views_count} {t("community.views", "Views")}
                   </span>
                   <button
                     onClick={() => handleSharePost(selectedPost)}
@@ -1041,11 +1046,11 @@ export default function Community() {
                   >
                     {copiedPostId === selectedPost.id ? (
                       <>
-                        <Check className="w-4 h-4 text-green-500" /> Copied
+                        <Check className="w-4 h-4 text-green-500" /> {t("community.actions.copied", "Copied")}
                       </>
                     ) : (
                       <>
-                        <Share className="w-4 h-4" /> Share
+                        <Share className="w-4 h-4" /> {t("community.actions.share", "Share")}
                       </>
                     )}
                   </button>
@@ -1054,7 +1059,7 @@ export default function Community() {
                 {/* Comments Section */}
                 <div className="space-y-4">
                   <h4 className="font-heading font-semibold text-base">
-                    Comments ({selectedPost.comments.length})
+                    {t("community.comments", "Comments")} ({selectedPost.comments.length})
                   </h4>
 
                   {isAuthenticated ? (
@@ -1064,7 +1069,7 @@ export default function Community() {
                       </div>
                       <div className="flex-1 flex gap-2">
                         <Textarea
-                          placeholder="Share your thoughts..."
+                          placeholder={t("community.commentPlaceholder", "Share your thoughts...")}
                           rows={3}
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
@@ -1080,18 +1085,18 @@ export default function Community() {
                           disabled={addCommentMutation.isPending || !newComment.trim()}
                           className="self-end gradient-warm text-secondary-foreground border-0 h-10"
                         >
-                          {addCommentMutation.isPending ? "..." : "Post"}
+                          {addCommentMutation.isPending ? "..." : t("community.actions.post", "Post")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-3">Sign in to comment</p>
+                      <p className="text-sm text-muted-foreground mb-3">{t("community.signInToComment", "Sign in to comment")}</p>
                       <Button
                         onClick={() => navigate("/auth")}
                         className="gradient-warm text-secondary-foreground border-0 gap-2"
                       >
-                        <LogIn className="w-4 h-4" /> Sign In
+                        <LogIn className="w-4 h-4" /> {t("community.actions.signIn", "Sign In")}
                       </Button>
                     </div>
                   )}
@@ -1100,7 +1105,7 @@ export default function Community() {
                   <div className="space-y-3 mt-6">
                     {selectedPost.comments.length === 0 ? (
                       <p className="text-center text-sm text-muted-foreground py-6">
-                        No comments yet. Be the first to comment!
+                        {t("community.empty.noComments", "No comments yet. Be the first to comment!")}
                       </p>
                     ) : (
                       selectedPost.comments.map((comment) => (
@@ -1149,11 +1154,11 @@ export default function Community() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="w-full max-w-sm sm:max-w-lg mx-4">
           <DialogHeader>
-            <DialogTitle className="font-heading">Edit Post</DialogTitle>
+            <DialogTitle className="font-heading">{t("community.actions.editPost", "Edit Post")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Title</label>
+              <label className="text-sm font-medium mb-2 block">{t("community.fields.title", "Title")}</label>
               <Input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
@@ -1161,7 +1166,7 @@ export default function Community() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Category</label>
+              <label className="text-sm font-medium mb-2 block">{t("community.fields.category", "Category")}</label>
               <Select value={editCategory} onValueChange={setEditCategory}>
                 <SelectTrigger className="border-2">
                   <SelectValue />
@@ -1171,14 +1176,14 @@ export default function Community() {
                     .filter((c) => c.id !== "all")
                     .map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.label}
+                        {t(c.labelKey, c.fallback)}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Description</label>
+              <label className="text-sm font-medium mb-2 block">{t("community.fields.description", "Description")}</label>
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
@@ -1187,7 +1192,7 @@ export default function Community() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Tags</label>
+              <label className="text-sm font-medium mb-2 block">{t("community.fields.tags", "Tags")}</label>
               <Input
                 value={editTags}
                 onChange={(e) => setEditTags(e.target.value)}
@@ -1200,14 +1205,14 @@ export default function Community() {
                 disabled={editPostMutation.isPending}
                 className="flex-1 gradient-warm text-secondary-foreground border-0"
               >
-                {editPostMutation.isPending ? "Saving..." : "Save Changes"}
+                {editPostMutation.isPending ? t("community.actions.saving", "Saving...") : t("community.actions.saveChanges", "Save Changes")}
               </Button>
               <Button
                 onClick={() => setShowEditDialog(false)}
                 variant="outline"
                 className="flex-1"
               >
-                Cancel
+                {t("community.actions.cancel", "Cancel")}
               </Button>
             </div>
           </div>

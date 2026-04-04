@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface Product {
   id: string;
@@ -84,6 +85,7 @@ const statusConfig = {
 
 export default function FarmerToMarket() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -134,8 +136,8 @@ export default function FarmerToMarket() {
     if (!user) return;
     
     const timer = setTimeout(() => {
-      toast.info("New Inquiry Received!", {
-        description: "FreshMart Wholesale is asking about your Basmati Rice.",
+      toast.info(t("farmerMarket.toast.newInquiry", "New Inquiry Received!"), {
+        description: t("farmerMarket.toast.newInquiryDescription", "FreshMart Wholesale is asking about your Basmati Rice."),
       });
     }, 15000);
 
@@ -167,9 +169,9 @@ export default function FarmerToMarket() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this listing?")) {
+    if (confirm(t("farmerMarket.confirmDelete", "Are you sure you want to delete this listing?"))) {
       setProducts(products.filter(p => p.id !== id));
-      toast.success("Listing deleted successfully");
+      toast.success(t("farmerMarket.toast.deleted", "Listing deleted successfully"));
     }
   };
 
@@ -193,7 +195,7 @@ export default function FarmerToMarket() {
     if (e) e.preventDefault();
     
     if (!formData.name || !formData.quantity || !formData.pricePerUnit) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("farmerMarket.toast.requiredFields", "Please fill in all required fields."));
       return;
     }
 
@@ -215,10 +217,10 @@ export default function FarmerToMarket() {
 
     if (editingProduct) {
       setProducts(products.map(p => p.id === editingProduct.id ? newProduct : p));
-      toast.success("Listing updated successfully");
+      toast.success(t("farmerMarket.toast.updated", "Listing updated successfully"));
     } else {
       setProducts([newProduct, ...products]);
-      toast.success("New product listed successfully");
+      toast.success(t("farmerMarket.toast.listed", "New product listed successfully"));
     }
 
     setShowAddProduct(false);
@@ -241,12 +243,12 @@ export default function FarmerToMarket() {
     link.href = URL.createObjectURL(blob);
     link.download = `my_listings_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    toast.success("Listing exported as CSV");
+    toast.success(t("farmerMarket.toast.exported", "Listing exported as CSV"));
   };
 
   const handleCall = (phone: string) => {
     window.location.href = `tel:${phone}`;
-    toast.info(`Initiating call to ${phone}`);
+    toast.info(t("farmerMarket.toast.calling", "Initiating call to {{phone}}", { phone }));
   };
 
   const handleConnect = (buyer: Buyer) => {
@@ -259,19 +261,19 @@ export default function FarmerToMarket() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">Farmer-to-Market</h1>
-          <p className="text-muted-foreground text-sm">List your produce and connect directly with buyers</p>
+          <h1 className="text-2xl font-heading font-bold text-foreground">{t("farmerMarket.title", "Farmer-to-Market")}</h1>
+          <p className="text-muted-foreground text-sm">{t("farmerMarket.subtitle", "List your produce and connect directly with buyers")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportCSV} className="gap-2">
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> {t("farmerMarket.actions.exportCsv", "Export CSV")}
           </Button>
           <Button onClick={() => {
             setEditingProduct(null);
             setImagePreview(null);
             setShowAddProduct(true);
           }} className="gap-2">
-            <Plus className="w-4 h-4" /> List New Product
+            <Plus className="w-4 h-4" /> {t("farmerMarket.actions.listNewProduct", "List New Product")}
           </Button>
         </div>
       </div>
@@ -298,8 +300,8 @@ export default function FarmerToMarket() {
       {/* Tabs */}
       <Tabs defaultValue="listings" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="listings">My Listings</TabsTrigger>
-          <TabsTrigger value="buyers">Find Buyers</TabsTrigger>
+          <TabsTrigger value="listings">{t("farmerMarket.tabs.myListings", "My Listings")}</TabsTrigger>
+          <TabsTrigger value="buyers">{t("farmerMarket.tabs.findBuyers", "Find Buyers")}</TabsTrigger>
         </TabsList>
 
         {/* --- Listings Tab --- */}
@@ -307,14 +309,14 @@ export default function FarmerToMarket() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search products or locations..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t("farmerMarket.searchProducts", "Search products or locations...")} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Button 
               variant="outline" 
               className={`gap-2 ${showAdvancedFilters ? "bg-primary/10 border-primary" : ""}`}
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             >
-              <SlidersHorizontal className="w-4 h-4" /> Filters
+              <SlidersHorizontal className="w-4 h-4" /> {t("farmerMarket.filters", "Filters")}
             </Button>
             <div className="flex gap-2 flex-wrap">
               {categories.map((c) => (
@@ -422,7 +424,7 @@ export default function FarmerToMarket() {
           {filteredProducts.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p>No products found. Try adjusting your filters.</p>
+              <p>{t("farmerMarket.noProducts", "No products found. Try adjusting your filters.")}</p>
             </div>
           )}
         </TabsContent>
@@ -432,7 +434,7 @@ export default function FarmerToMarket() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search buyers..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t("farmerMarket.searchBuyers", "Search buyers...")} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={buyerTypeFilter} onValueChange={setBuyerTypeFilter}>
               <SelectTrigger className="w-40"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger>
@@ -488,8 +490,8 @@ export default function FarmerToMarket() {
                       </div>
                       <p className="text-xs text-muted-foreground">Active {buyer.lastActive}</p>
                       <div className="flex gap-2 pt-1">
-                        <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => setSelectedBuyer(buyer)}><Eye className="w-3.5 h-3.5" /> Profile</Button>
-                        <Button size="sm" className="flex-1 gap-1" onClick={() => handleConnect(buyer)}><Handshake className="w-3.5 h-3.5" /> Connect</Button>
+                        <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => setSelectedBuyer(buyer)}><Eye className="w-3.5 h-3.5" /> {t("farmerMarket.actions.profile", "Profile")}</Button>
+                        <Button size="sm" className="flex-1 gap-1" onClick={() => handleConnect(buyer)}><Handshake className="w-3.5 h-3.5" /> {t("farmerMarket.actions.connect", "Connect")}</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -510,9 +512,11 @@ export default function FarmerToMarket() {
       }}>
         <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "List New Product"}</DialogTitle>
+            <DialogTitle>{editingProduct ? t("farmerMarket.actions.editProduct", "Edit Product") : t("farmerMarket.actions.listNewProduct", "List New Product")}</DialogTitle>
             <DialogDescription>
-              {editingProduct ? "Update your listing details below." : "Add your produce to the marketplace for buyers to discover."}
+              {editingProduct
+                ? t("farmerMarket.editDescription", "Update your listing details below.")
+                : t("farmerMarket.newDescription", "Add your produce to the marketplace for buyers to discover.")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleListProduct} className="space-y-4">
@@ -596,8 +600,8 @@ export default function FarmerToMarket() {
               <Textarea placeholder="Describe quality, harvest date, certifications..." rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
             </div>
             <DialogFooter className="pt-4">
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" onClick={() => handleListProduct()}>{editingProduct ? "Save Changes" : "List Product"}</Button>
+              <DialogClose asChild><Button type="button" variant="outline">{t("farmerMarket.actions.cancel", "Cancel")}</Button></DialogClose>
+              <Button type="submit" onClick={() => handleListProduct()}>{editingProduct ? t("farmerMarket.actions.saveChanges", "Save Changes") : t("farmerMarket.actions.listProduct", "List Product")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -665,7 +669,7 @@ export default function FarmerToMarket() {
                     <Trash2 className="w-4 h-4" /> Delete
                   </Button>
                   <DialogClose asChild>
-                    <Button variant="ghost" className="w-full">Close</Button>
+                    <Button variant="ghost" className="w-full">{t("farmerMarket.actions.close", "Close")}</Button>
                   </DialogClose>
                 </div>
               </div>
@@ -698,7 +702,7 @@ export default function FarmerToMarket() {
             </div>
           </div>
           <div className="p-4 border-t flex gap-2">
-            <Input placeholder="Type a message..." />
+            <Input placeholder={t("farmerMarket.typeMessage", "Type a message...")} />
             <Button size="icon"><Send className="w-4 h-4" /></Button>
           </div>
         </DialogContent>
@@ -729,12 +733,12 @@ export default function FarmerToMarket() {
               </div>
               <div className="p-4 border-t bg-background flex gap-2">
                 <Input 
-                  placeholder="Type your message..." 
+                  placeholder={t("farmerMarket.typeMessage", "Type your message...")} 
                   value={connectMessage}
                   onChange={(e) => setConnectMessage(e.target.value)}
                 />
                 <Button size="icon" onClick={() => {
-                  toast.success(`Message sent to ${connectingBuyer.name}`);
+                  toast.success(t("farmerMarket.toast.messageSent", "Message sent to {{name}}", { name: connectingBuyer.name }));
                   setConnectingBuyer(null);
                 }}>
                   <Send className="w-4 h-4" />
@@ -782,10 +786,10 @@ export default function FarmerToMarket() {
                 </div>
                 <div className="flex gap-2">
                   <Button className="flex-1 gap-2" onClick={() => handleCall(selectedBuyer.phone)}>
-                    <Phone className="w-4 h-4" /> Call Buyer
+                    <Phone className="w-4 h-4" /> {t("farmerMarket.actions.callBuyer", "Call Buyer")}
                   </Button>
                   <Button variant="outline" className="flex-1 gap-2" onClick={() => handleMessage(selectedBuyer.name)}>
-                    <MessageCircle className="w-4 h-4" /> Message
+                    <MessageCircle className="w-4 h-4" /> {t("farmerMarket.actions.message", "Message")}
                   </Button>
                 </div>
               </div>

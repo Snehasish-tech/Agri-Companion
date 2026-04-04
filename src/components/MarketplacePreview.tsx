@@ -1,6 +1,7 @@
 import { ShoppingCart, Star, Truck, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 const products = [
   { name: "Hybrid Tomato Seeds", brand: "SeedTech Pro", price: "₹450", original: "₹650", rating: 4.8, reviews: 234, badge: "Bestseller", emoji: "🍅" },
@@ -10,6 +11,8 @@ const products = [
 ];
 
 export default function MarketplacePreview() {
+  const { t } = useTranslation();
+
   return (
     <section id="marketplace" className="py-14 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6">
@@ -19,12 +22,12 @@ export default function MarketplacePreview() {
           viewport={{ once: true }}
           className="text-center mb-10 sm:mb-16"
         >
-          <span className="text-sm font-semibold text-commerce uppercase tracking-wider">Marketplace</span>
+          <span className="text-sm font-semibold text-commerce uppercase tracking-wider">{t("home.marketplace.badge", { defaultValue: "Marketplace" })}</span>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-foreground mt-2 mb-4">
-            Everything Your Farm <span className="text-gradient-warm">Needs</span>
+            {t("home.marketplace.titlePrefix", { defaultValue: "Everything Your Farm" })} <span className="text-gradient-warm">{t("home.marketplace.titleHighlight", { defaultValue: "Needs" })}</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-sm sm:text-lg">
-            Quality seeds, fertilizers, equipment, and tools — delivered to your doorstep.
+            {t("home.marketplace.subtitle", { defaultValue: "Quality seeds, fertilizers, equipment, and tools — delivered to your doorstep." })}
           </p>
         </motion.div>
 
@@ -41,12 +44,12 @@ export default function MarketplacePreview() {
               <div className="h-28 sm:h-40 bg-muted/50 flex items-center justify-center text-4xl sm:text-6xl relative">
                 {p.emoji}
                 <span className="absolute top-2 left-2 sm:top-3 sm:left-3 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full gradient-warm text-secondary-foreground">
-                  {p.badge}
+                  {t(`home.marketplace.products.${i}.badge`, { defaultValue: p.badge })}
                 </span>
               </div>
               <div className="p-3 sm:p-4">
                 <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">{p.brand}</p>
-                <h3 className="font-heading font-semibold text-xs sm:text-sm text-foreground mb-1.5 sm:mb-2 line-clamp-2">{p.name}</h3>
+                <h3 className="font-heading font-semibold text-xs sm:text-sm text-foreground mb-1.5 sm:mb-2 line-clamp-2">{t(`home.marketplace.products.${i}.name`, { defaultValue: p.name })}</h3>
                 <div className="flex items-center gap-1 mb-2 sm:mb-3">
                   <Star className="w-3 sm:w-3.5 h-3 sm:h-3.5 fill-accent text-accent" />
                   <span className="text-[10px] sm:text-xs font-mono font-medium text-foreground">{p.rating}</span>
@@ -73,9 +76,9 @@ export default function MarketplacePreview() {
           className="flex flex-wrap justify-center gap-8 text-muted-foreground"
         >
           {[
-            { icon: Truck, label: "Free Delivery above ₹999" },
-            { icon: Shield, label: "100% Genuine Products" },
-            { icon: Star, label: "Quality Guaranteed" },
+            { icon: Truck, label: t("home.marketplace.benefits.freeDelivery", { defaultValue: "Free Delivery above ₹999" }) },
+            { icon: Shield, label: t("home.marketplace.benefits.genuine", { defaultValue: "100% Genuine Products" }) },
+            { icon: Star, label: t("home.marketplace.benefits.quality", { defaultValue: "Quality Guaranteed" }) },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-2 text-sm">
               <item.icon className="w-4 h-4 text-primary" />

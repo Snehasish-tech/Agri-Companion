@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useDashboardNotifications } from "@/hooks/useDashboardNotifications";
+import { useTranslation } from "react-i18next";
 import {
   Popover,
   PopoverContent,
@@ -17,26 +19,28 @@ import {
 } from "@/components/ui/popover";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Wheat, label: "My Farms", path: "/dashboard/farms" },
-  { icon: Bot, label: "AI Recommendations", path: "/dashboard/ai" },
-  { icon: CloudSun, label: "Weather Insights", path: "/dashboard/weather" },
-  { icon: TrendingUp, label: "Market Prices", path: "/dashboard/market" },
-  { icon: ShoppingCart, label: "Marketplace", path: "/dashboard/shop" },
-  { icon: Warehouse, label: "Storage", path: "/dashboard/storage" },
-  { icon: Handshake, label: "Farmer-to-Market", path: "/dashboard/sell" },
-  { icon: Briefcase, label: "Expert Consultancy", path: "/dashboard/experts" },
-  { icon: MessageCircle, label: "AI Chatbot", path: "/dashboard/chat" },
-  { icon: Users, label: "Community", path: "/dashboard/community" },
-  { icon: BookOpen, label: "Knowledge Base", path: "/dashboard/learn" },
-  { icon: Receipt, label: "Orders & Sales", path: "/dashboard/orders" },
-  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+  { icon: LayoutDashboard, labelKey: "sidebar.dashboard", path: "/dashboard" },
+  { icon: Wheat, labelKey: "sidebar.myFarms", path: "/dashboard/farms" },
+  { icon: Bot, labelKey: "sidebar.aiRecommendations", path: "/dashboard/ai" },
+  { icon: CloudSun, labelKey: "sidebar.weatherInsights", path: "/dashboard/weather" },
+  { icon: TrendingUp, labelKey: "sidebar.marketPrices", path: "/dashboard/market" },
+  { icon: ShoppingCart, labelKey: "sidebar.marketplace", path: "/dashboard/shop" },
+  { icon: Warehouse, labelKey: "sidebar.storage", path: "/dashboard/storage" },
+  { icon: Handshake, labelKey: "sidebar.farmerToMarket", path: "/dashboard/sell" },
+  { icon: Briefcase, labelKey: "sidebar.expertConsultancy", path: "/dashboard/experts" },
+  { icon: MessageCircle, labelKey: "sidebar.aiChatbot", path: "/dashboard/chat" },
+  { icon: Users, labelKey: "sidebar.community", path: "/dashboard/community" },
+  { icon: BookOpen, labelKey: "sidebar.knowledgeBase", path: "/dashboard/learn" },
+  { icon: Receipt, labelKey: "sidebar.ordersAndSales", path: "/dashboard/orders" },
+  { icon: Settings, labelKey: "sidebar.settings", path: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout() {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const showGlobalSearch = /^\/dashboard\/?$/.test(location.pathname);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { notifications, loading: notificationsLoading } = useDashboardNotifications(user?.id);
@@ -127,7 +131,7 @@ export default function DashboardLayout() {
               }`}
             >
               <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-sidebar-primary" : ""}`} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span>{t(item.labelKey)}</span>}
             </Link>
           );
         })}
@@ -154,14 +158,14 @@ export default function DashboardLayout() {
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 w-full transition-colors"
         >
           <LogOut className="w-4 h-4 shrink-0" />
-          {!collapsed && <span>Sign Out</span>}
+          {!collapsed && <span>{t("sidebar.signOut")}</span>}
         </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="hidden lg:flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 w-full transition-colors"
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          {!collapsed && <span>Collapse</span>}
+          {!collapsed && <span>{t("sidebar.collapse")}</span>}
         </button>
       </div>
     </>
@@ -188,20 +192,23 @@ export default function DashboardLayout() {
       <div className={`flex-1 ${collapsed ? "lg:ml-16" : "lg:ml-64"} transition-all duration-300`}>
         {/* Top bar */}
         <header className="h-14 sm:h-16 bg-card/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
-            <div className="hidden sm:flex items-center gap-3 bg-muted/70 rounded-xl px-3 py-2 w-72">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search crops, products, mandis..."
-                className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
-              />
-            </div>
+            {showGlobalSearch && (
+              <div className="hidden sm:flex items-center gap-3 bg-muted/70 rounded-xl px-3 py-2 w-full max-w-[28rem]">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder={t("topbar.searchPlaceholder")}
+                  className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+                />
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
+            <LanguageSwitcher className="hidden sm:inline-flex" />
             <ThemeToggle className="text-muted-foreground" />
             <Popover>
               <PopoverTrigger asChild>
@@ -214,14 +221,14 @@ export default function DashboardLayout() {
               </PopoverTrigger>
               <PopoverContent className="w-full max-w-sm sm:w-80 p-0" align="end">
                 <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h4 className="font-heading font-bold text-sm">Notifications</h4>
-                  <button onClick={() => navigate("/dashboard")} className="text-[10px] text-primary hover:underline font-medium">View All</button>
+                  <h4 className="font-heading font-bold text-sm">{t("notifications.title")}</h4>
+                  <button onClick={() => navigate("/dashboard")} className="text-[10px] text-primary hover:underline font-medium">{t("notifications.viewAll")}</button>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
                   {notificationsLoading ? (
-                    <div className="p-4 text-xs text-muted-foreground">Loading notifications...</div>
+                    <div className="p-4 text-xs text-muted-foreground">{t("notifications.loading")}</div>
                   ) : notifications.length === 0 ? (
-                    <div className="p-4 text-xs text-muted-foreground">No notifications yet.</div>
+                    <div className="p-4 text-xs text-muted-foreground">{t("notifications.empty")}</div>
                   ) : (
                     notifications.map((n) => (
                       <div

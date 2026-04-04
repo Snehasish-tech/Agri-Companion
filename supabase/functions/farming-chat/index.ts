@@ -48,6 +48,17 @@ type IncomingMessage = {
   content?: string | IncomingContentPart[];
 };
 
+const isTextPart = (part: IncomingContentPart): part is { type?: string; text?: string } =>
+  "text" in part;
+
+const isImageUrlPart = (
+  part: IncomingContentPart
+): part is { type?: string; image_url?: { url?: string } } => "image_url" in part;
+
+const isBase64ImagePart = (
+  part: IncomingContentPart
+): part is { type?: string; source?: { type?: string; media_type?: string; data?: string } } => "source" in part;
+
 function normalizeMessages(input: unknown): Array<{ role: "user" | "assistant" | "system"; content: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> }> {
   if (!Array.isArray(input)) return [];
 
@@ -68,17 +79,28 @@ function normalizeMessages(input: unknown): Array<{ role: "user" | "assistant" |
 
       for (const part of m.content) {
         const p = part as IncomingContentPart;
-        if (p.type === "text" && typeof p.text === "string" && p.text.trim()) {
+        if (p.type === "text" && isTextPart(p) && typeof p.text === "string" && p.text.trim()) {
           normalizedParts.push({ type: "text", text: p.text });
           continue;
         }
 
-        if (p.type === "image_url" && typeof p.image_url?.url === "string" && p.image_url.url.trim()) {
+        if (
+          p.type === "image_url" &&
+          isImageUrlPart(p) &&
+          typeof p.image_url?.url === "string" &&
+          p.image_url.url.trim()
+        ) {
           normalizedParts.push({ type: "image_url", image_url: { url: p.image_url.url } });
           continue;
         }
 
-        if (p.type === "image" && p.source?.type === "base64" && typeof p.source?.data === "string" && p.source.data.trim()) {
+        if (
+          p.type === "image" &&
+          isBase64ImagePart(p) &&
+          p.source?.type === "base64" &&
+          typeof p.source?.data === "string" &&
+          p.source.data.trim()
+        ) {
           const mediaType = p.source.media_type || "image/jpeg";
           normalizedParts.push({
             type: "image_url",

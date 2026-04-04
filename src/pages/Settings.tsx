@@ -16,6 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from "react-i18next";
 interface Profile {
   avatar_url: string;
   full_name: string;
@@ -67,7 +68,27 @@ const defaultProfile: Profile = {
   notify_sms_critical: true, notify_whatsapp: false,
 };
 
+const languagePreferenceOptions = [
+  { value: "English", code: "en", labelKey: "language.english" },
+  { value: "Hindi", code: "hi", labelKey: "language.hindi" },
+  { value: "Bengali", code: "bn", labelKey: "language.bengali" },
+] as const;
+
+const languageNameToCode: Record<string, string> = {
+  English: "en",
+  Hindi: "hi",
+  Bengali: "bn",
+  বাংলা: "bn",
+};
+
+const languageCodeToName: Record<string, string> = {
+  en: "English",
+  hi: "Hindi",
+  bn: "Bengali",
+};
+
 export default function Settings() {
+  const { t, i18n } = useTranslation();
   const { user, signOut, refreshUserProfile } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile>(defaultProfile);
@@ -100,10 +121,16 @@ export default function Settings() {
           date_of_birth: data.date_of_birth || "",
           primary_crops: data.primary_crops || [],
         });
+
+        const preferredLanguage = languageNameToCode[data.language_preference || ""] || "en";
+        void i18n.changeLanguage(preferredLanguage);
+
+        const normalizedLanguageName = languageCodeToName[preferredLanguage] || "English";
+        setProfile((prev) => ({ ...prev, language_preference: normalizedLanguageName }));
       }
       setLoading(false);
     })();
-  }, [user]);
+  }, [i18n, user]);
 
   const saveProfile = async () => {
     if (!user) return;
@@ -268,7 +295,7 @@ export default function Settings() {
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-bold text-foreground mb-6">Settings</h1>
+      <h1 className="font-heading text-2xl font-bold text-foreground mb-6">{t("settings.title")}</h1>
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid grid-cols-3 lg:grid-cols-7 gap-1 h-auto p-1">
           <TabsTrigger value="profile" className="text-xs gap-1"><User className="w-3 h-3" /> Profile</TabsTrigger>
@@ -350,14 +377,21 @@ export default function Settings() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Language</Label>
-                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={profile.language_preference} onChange={(e) => update("language_preference", e.target.value)}>
-                    <option>English</option>
-                    <option>Hindi</option>
-                    <option>Bengali</option>
-                    <option>Tamil</option>
-                    <option>Telugu</option>
-                    <option>Marathi</option>
+                  <Label>{t("settings.language")}</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={profile.language_preference}
+                    onChange={(e) => {
+                      const selectedLanguage = e.target.value;
+                      update("language_preference", selectedLanguage);
+                      void i18n.changeLanguage(languageNameToCode[selectedLanguage] || "en");
+                    }}
+                  >
+                    {languagePreferenceOptions.map((language) => (
+                      <option key={language.code} value={language.value}>
+                        {t(language.labelKey)}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

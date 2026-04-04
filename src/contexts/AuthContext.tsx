@@ -147,6 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted) setUser(mappedUser);
         }
       } catch {
+        try {
+          // If refresh token is invalid/stale, clear local session state to prevent repeated auth errors.
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // Ignore cleanup failures and continue with logged-out state.
+        }
         if (mounted) {
           setUser(null);
         }

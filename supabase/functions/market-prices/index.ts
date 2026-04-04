@@ -1,26 +1,31 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+export {};
 
-serve(async (req: Request) => {
-  // Handle CORS preflight
+declare const Deno: {
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void;
+};
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   try {
-    // Fetch from data.gov.in API (server-side, no CORS issues)
-    const apiUrl =
-      "https://api.data.gov.in/resource/9ef2731d-91f2-4fd2-a055-14f777e43997";
     const apiKey = "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b";
+    
+    const url = `https://api.data.gov.in/resource/10f1ae35-d807-43c1-a1cc-09eab17dc78e?api-key=${apiKey}&format=json&limit=100&offset=0`;
 
-    const url = `${apiUrl}?api-key=${apiKey}&format=json&limit=1000&offset=0`;
-
-    console.log(`🔄 Fetching market prices from: ${apiUrl}`);
+    console.log(`🔄 Fetching market prices from data.gov.in...`);
 
     const response = await fetch(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
+        "Content-Type": "application/json",
         "User-Agent": "Agri-Companion/1.0",
       },
     });
@@ -29,20 +34,23 @@ serve(async (req: Request) => {
       console.warn(`⚠️ API returned status ${response.status}`);
       return new Response(
         JSON.stringify({ records: [], error: `HTTP ${response.status}` }),
-        {
-          status: 200, // Still return 200 so client doesn't error
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const data = await response.json();
+    
+    let records: any[] = [];
+    
+    if (data.records && Array.isArray(data.records)) {
+      records = data.records;
+    } else if (data.results && Array.isArray(data.results)) {
+      records = data.results;
+    }
+    
+    console.log(`✅ Got ${records.length} price records from API`);
 
-    console.log(
-      `✅ Got ${data.records?.length || 0} price records from API`
-    );
-
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({ records, total: records.length }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -50,7 +58,6 @@ serve(async (req: Request) => {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`❌ Market prices error: ${errorMsg}`);
 
-    // Return empty array but with 200 status so client can fallback gracefully
     return new Response(JSON.stringify({ records: [], error: errorMsg }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

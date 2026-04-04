@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface Product {
   id: number;
@@ -116,6 +117,7 @@ const states = [
 ];
 
 export default function Marketplace() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
   const sb = supabase as any;
@@ -127,6 +129,24 @@ export default function Marketplace() {
   const [showCart, setShowCart] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [wishlist, setWishlist] = useState<number[]>([]);
+
+  const getCategoryLabel = (cat: string) => {
+    const keyMap: Record<string, string> = {
+      All: "marketplace.categories.all",
+      Seeds: "marketplace.categories.seeds",
+      Fertilizers: "marketplace.categories.fertilizers",
+      Pesticides: "marketplace.categories.pesticides",
+      Irrigation: "marketplace.categories.irrigation",
+      Equipment: "marketplace.categories.equipment",
+      Tools: "marketplace.categories.tools",
+    };
+    return t(keyMap[cat] || "marketplace.categories.all", cat);
+  };
+
+  const getStateLabel = (state: string) => {
+    if (state === "All States") return t("marketplace.allStates", "All States");
+    return state;
+  };
 
   const filtered = useMemo(() => {
     const result = products.filter((p) => {
@@ -154,7 +174,10 @@ export default function Marketplace() {
         return prev.map((c) => (c.id === product.id ? { ...c, qty: c.qty + 1 } : c));
       return [...prev, { ...product, qty: 1 }];
     });
-    toast({ title: "Added to cart", description: `${product.name} added` });
+    toast({
+      title: t("marketplace.toast.addedToCart", "Added to cart"),
+      description: t("marketplace.toast.itemAdded", "{{name}} added", { name: product.name }),
+    });
   };
 
   const toggleWishlist = (id: number) => {
@@ -162,8 +185,12 @@ export default function Marketplace() {
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
     toast({
-      title: wishlist.includes(id) ? "Removed from wishlist" : "Added to wishlist",
-      description: wishlist.includes(id) ? "Item removed" : "Item saved for later",
+      title: wishlist.includes(id)
+        ? t("marketplace.toast.removedFromWishlist", "Removed from wishlist")
+        : t("marketplace.toast.addedToWishlist", "Added to wishlist"),
+      description: wishlist.includes(id)
+        ? t("marketplace.toast.itemRemoved", "Item removed")
+        : t("marketplace.toast.itemSaved", "Item saved for later"),
     });
   };
 
@@ -181,8 +208,8 @@ export default function Marketplace() {
   const handleCheckoutSuccess = async () => {
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to place an order.",
+        title: t("marketplace.toast.error", "Error"),
+        description: t("marketplace.toast.loginRequired", "You must be logged in to place an order."),
         variant: "destructive",
       });
       return;
@@ -200,7 +227,7 @@ export default function Marketplace() {
         total_price: cartTotal + (cartTotal >= 999 ? 0 : 49),
         status: "pending",
         payment_status: "paid",
-        shipping_address: "Default Delivery Address",
+        shipping_address: t("marketplace.defaults.deliveryAddress", "Default Delivery Address"),
       };
 
       const localKey = `local_orders_${user.id}`;
@@ -215,16 +242,16 @@ export default function Marketplace() {
       await sb.from("marketplace_orders").insert([orderData]);
 
       toast({
-        title: "Order Placed!",
-        description: "Your order details are now visible in the Orders section.",
+        title: t("marketplace.toast.orderPlaced", "Order Placed!"),
+        description: t("marketplace.toast.orderVisible", "Your order details are now visible in the Orders section."),
       });
       setCart([]);
       setShowCart(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
       toast({
-        title: "Error",
-        description: "Failed to process order: " + message,
+        title: t("marketplace.toast.error", "Error"),
+        description: t("marketplace.toast.processFailed", "Failed to process order: {{message}}", { message }),
         variant: "destructive",
       });
     }
@@ -240,14 +267,14 @@ export default function Marketplace() {
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl font-heading font-bold text-foreground"
           >
-            🛒 Agricultural Marketplace
+            {t("marketplace.title", "Agricultural Marketplace")}
           </motion.h1>
           <p className="text-muted-foreground mt-1">
-            Premium seeds, fertilizers, equipment & more from verified sellers across India
+            {t("marketplace.subtitle", "Premium seeds, fertilizers, equipment and more from verified sellers across India")}
           </p>
         </div>
         <Button variant="outline" className="relative" onClick={() => setShowCart(!showCart)}>
-          <ShoppingCart className="w-4 h-4 mr-2" /> Cart
+          <ShoppingCart className="w-4 h-4 mr-2" /> {t("marketplace.cart", "Cart")}
           {cartCount > 0 && (
             <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-bold flex items-center justify-center">
               {cartCount}
@@ -264,10 +291,10 @@ export default function Marketplace() {
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
         {[
-          { icon: Package, value: "5000+", label: "Products", color: "text-primary" },
-          { icon: MapPin, value: "28+", label: "States Covered", color: "text-success" },
-          { icon: Truck, value: "Free", label: "Delivery > ₹999", color: "text-warning" },
-          { icon: Shield, value: "100%", label: "Genuine Products", color: "text-info" },
+          { icon: Package, value: "5000+", label: t("marketplace.stats.products", "Products"), color: "text-primary" },
+          { icon: MapPin, value: "28+", label: t("marketplace.stats.statesCovered", "States Covered"), color: "text-success" },
+          { icon: Truck, value: t("marketplace.stats.free", "Free"), label: t("marketplace.stats.delivery", "Delivery > ₹999"), color: "text-warning" },
+          { icon: Shield, value: "100%", label: t("marketplace.stats.genuineProducts", "Genuine Products"), color: "text-info" },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -302,7 +329,7 @@ export default function Marketplace() {
                 }`}
               >
                 {cat !== "All" && <Icon className="w-4 h-4" />}
-                {cat}
+                {getCategoryLabel(cat)}
               </button>
             );
           })}
@@ -313,7 +340,7 @@ export default function Marketplace() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search products, brands, locations..."
+              placeholder={t("marketplace.searchPlaceholder", "Search products, brands, locations...")}
               className="pl-10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -322,12 +349,12 @@ export default function Marketplace() {
           <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-full sm:w-48">
               <MapPin className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="State" />
+              <SelectValue placeholder={t("marketplace.state", "State")} />
             </SelectTrigger>
             <SelectContent>
               {states.map((state) => (
                 <SelectItem key={state} value={state}>
-                  {state}
+                  {getStateLabel(state)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -335,14 +362,14 @@ export default function Marketplace() {
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full sm:w-44">
               <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t("marketplace.sortBy", "Sort by")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="popular">Most Popular</SelectItem>
-              <SelectItem value="rating">Top Rated</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="reviews">Most Reviews</SelectItem>
+              <SelectItem value="popular">{t("marketplace.sort.popular", "Most Popular")}</SelectItem>
+              <SelectItem value="rating">{t("marketplace.sort.topRated", "Top Rated")}</SelectItem>
+              <SelectItem value="price-low">{t("marketplace.sort.priceLow", "Price: Low to High")}</SelectItem>
+              <SelectItem value="price-high">{t("marketplace.sort.priceHigh", "Price: High to Low")}</SelectItem>
+              <SelectItem value="reviews">{t("marketplace.sort.reviews", "Most Reviews")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -351,7 +378,7 @@ export default function Marketplace() {
       {/* Results Count */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing <span className="font-semibold text-foreground">{filtered.length}</span> products
+          {t("marketplace.showing", "Showing")} <span className="font-semibold text-foreground">{filtered.length}</span> {t("marketplace.products", "products")}
           {stateFilter !== "All States" && (
             <span>
               {" "}
@@ -419,12 +446,12 @@ export default function Marketplace() {
                     <Star className="w-3 h-3 text-accent fill-accent" />
                     <span className="text-xs font-numbers text-foreground">{product.rating}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">({product.reviews} reviews)</span>
+                  <span className="text-xs text-muted-foreground">({product.reviews} {t("marketplace.reviews", "reviews")})</span>
                 </div>
 
                 <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                   <Truck className="w-3 h-3" />
-                  <span>Delivery in {product.deliveryDays} days</span>
+                  <span>{t("marketplace.deliveryIn", "Delivery in {{days}} days", { days: product.deliveryDays })}</span>
                 </div>
 
                 <div className="flex items-end justify-between mt-3 pt-3 border-t border-border">
@@ -446,10 +473,10 @@ export default function Marketplace() {
                   >
                     {product.inStock ? (
                       <>
-                        <Plus className="w-3 h-3 mr-1" /> Add
+                        <Plus className="w-3 h-3 mr-1" /> {t("marketplace.add", "Add")}
                       </>
                     ) : (
-                      "Out of Stock"
+                      t("marketplace.outOfStock", "Out of Stock")
                     )}
                   </Button>
                 </div>
@@ -470,7 +497,7 @@ export default function Marketplace() {
               <div className="glass-card rounded-2xl p-5 sticky top-24">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-heading font-semibold text-foreground">
-                    Cart ({cartCount})
+                    {t("marketplace.cart", "Cart")} ({cartCount})
                   </h3>
                   <button onClick={() => setShowCart(false)}>
                     <X className="w-4 h-4 text-muted-foreground" />
@@ -480,8 +507,8 @@ export default function Marketplace() {
                 {cart.length === 0 ? (
                   <div className="text-center py-8">
                     <ShoppingCart className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Cart is empty</p>
-                    <p className="text-xs text-muted-foreground mt-1">Add items to get started</p>
+                    <p className="text-sm text-muted-foreground">{t("marketplace.cartEmpty", "Cart is empty")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("marketplace.cartEmptyHint", "Add items to get started")}</p>
                   </div>
                 ) : (
                   <>
@@ -518,19 +545,19 @@ export default function Marketplace() {
                     </div>
                     <div className="border-t border-border mt-4 pt-4 space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="text-muted-foreground">{t("marketplace.subtotal", "Subtotal")}</span>
                         <span className="font-numbers text-foreground">
                           ₹{cartTotal.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Delivery</span>
+                        <span className="text-muted-foreground">{t("marketplace.delivery", "Delivery")}</span>
                         <span className="font-numbers text-success">
-                          {cartTotal >= 999 ? "Free" : "₹49"}
+                          {cartTotal >= 999 ? t("marketplace.stats.free", "Free") : "₹49"}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm font-medium">
-                        <span className="text-foreground">Total</span>
+                        <span className="text-foreground">{t("marketplace.total", "Total")}</span>
                         <span className="font-numbers font-bold text-foreground">
                           ₹{(cartTotal + (cartTotal >= 999 ? 0 : 49)).toLocaleString()}
                         </span>
@@ -539,7 +566,7 @@ export default function Marketplace() {
                         className="w-full gradient-warm text-secondary-foreground border-0 hover:opacity-90"
                         onClick={() => setPaymentOpen(true)}
                       >
-                        <CreditCard className="w-4 h-4 mr-2" /> Checkout{" "}
+                        <CreditCard className="w-4 h-4 mr-2" /> {t("marketplace.checkout", "Checkout")}{" "}
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
@@ -554,7 +581,7 @@ export default function Marketplace() {
       {filtered.length === 0 && (
         <div className="text-center py-16">
           <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground">No products found matching your criteria</p>
+          <p className="text-muted-foreground">{t("marketplace.noProducts", "No products found matching your criteria")}</p>
           <Button
             variant="outline"
             className="mt-4"
@@ -564,7 +591,7 @@ export default function Marketplace() {
               setStateFilter("All States");
             }}
           >
-            Clear Filters
+            {t("marketplace.clearFilters", "Clear Filters")}
           </Button>
         </div>
       )}
@@ -574,7 +601,7 @@ export default function Marketplace() {
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         amount={cartTotal + (cartTotal >= 999 ? 0 : 49)}
-        description={`Marketplace order — ${cartCount} items`}
+        description={t("marketplace.paymentDescription", "Marketplace order - {{count}} items", { count: cartCount })}
         onSuccess={handleCheckoutSuccess}
       />
     </div>

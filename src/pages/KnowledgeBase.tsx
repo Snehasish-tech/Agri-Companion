@@ -1,16 +1,24 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTranslation } from "react-i18next";
 import {
   Search, BookOpen, PlayCircle, FileText, Sprout, Bug, Droplets,
-  Sun, Tractor, Leaf, ChevronRight, Clock, Eye, ThumbsUp, Filter,
+  Sun, Tractor, Leaf, ChevronRight, Clock, Eye, ThumbsUp,
 } from "lucide-react";
 
-const categories = ["All", "Crop Management", "Pest Control", "Irrigation", "Soil Health", "Equipment", "Organic Farming"];
+const categories = [
+  { id: "all", labelKey: "knowledgeBase.categories.all", fallback: "All" },
+  { id: "Crop Management", labelKey: "knowledgeBase.categories.cropManagement", fallback: "Crop Management" },
+  { id: "Pest Control", labelKey: "knowledgeBase.categories.pestControl", fallback: "Pest Control" },
+  { id: "Irrigation", labelKey: "knowledgeBase.categories.irrigation", fallback: "Irrigation" },
+  { id: "Soil Health", labelKey: "knowledgeBase.categories.soilHealth", fallback: "Soil Health" },
+  { id: "Equipment", labelKey: "knowledgeBase.categories.equipment", fallback: "Equipment" },
+  { id: "Organic Farming", labelKey: "knowledgeBase.categories.organicFarming", fallback: "Organic Farming" },
+];
 
 const articles = [
   { id: 1, title: "Complete Guide to Wheat Cultivation in India", category: "Crop Management", type: "guide", readTime: "12 min", views: 2340, likes: 187, icon: Sprout, tags: ["wheat", "rabi", "cultivation"], excerpt: "Learn best practices for wheat farming from seed selection to harvesting techniques." },
@@ -27,93 +35,183 @@ const articles = [
 const typeIcon = { guide: BookOpen, tutorial: FileText, article: FileText, video: PlayCircle };
 
 export default function KnowledgeBase() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const getCategoryLabel = (categoryId: string) => {
+    const match = categories.find((cat) => cat.id === categoryId);
+    if (!match) return categoryId;
+    return t(match.labelKey, { defaultValue: match.fallback });
+  };
 
   const filtered = articles.filter((a) => {
     const matchesSearch = !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.tags.some((t) => t.includes(search.toLowerCase()));
-    const matchesCategory = selectedCategory === "All" || a.category === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || a.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-heading font-bold text-foreground">Knowledge Base</h1>
-        <p className="text-muted-foreground text-sm mt-1">Farming guides, tutorials, and articles to help you grow better</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }} 
+        animate={{ opacity: 1, y: 0 }}
+        className="pt-4"
+      >
+        <h1 className="text-3xl sm:text-4xl font-heading font-bold text-foreground flex items-center gap-2">
+          📚 {t("knowledgeBase.title", { defaultValue: "Learning Center" })}
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-2">{t("knowledgeBase.subtitle", { defaultValue: "Expand your farming knowledge with expert guides and tutorials" })}</p>
+      </motion.div>
 
-      {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Search & Filter */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ delay: 0.1 }}
+        className="space-y-4"
+      >
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search articles, guides, tutorials..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input 
+            placeholder={t("knowledgeBase.searchPlaceholder", { defaultValue: "Search articles, guides..." })} 
+            className="pl-9 h-11 border border-border/50 focus:border-primary/50 bg-card/50" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+          />
         </div>
-      </div>
 
-      {/* Categories */}
-      <div className="flex gap-2 flex-wrap">
-        {categories.map((cat) => (
-          <Button key={cat} variant={selectedCategory === cat ? "default" : "outline"} size="sm" onClick={() => setSelectedCategory(cat)}>
-            {cat}
-          </Button>
-        ))}
-      </div>
+        {/* Category Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {categories.map((cat, i) => (
+            <motion.div
+              key={cat.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 + i * 0.03 }}
+            >
+              <Button 
+                variant={selectedCategory === cat.id ? "default" : "outline"} 
+                size="sm"
+                className={selectedCategory === cat.id ? "bg-primary text-primary-foreground" : "border-border/50"}
+                onClick={() => setSelectedCategory(cat.id)}
+              >
+                {t(cat.labelKey, { defaultValue: cat.fallback })}
+              </Button>
+            </motion.div>
+          ))}
+        </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="guide">Guides</TabsTrigger>
-          <TabsTrigger value="tutorial">Tutorials</TabsTrigger>
-          <TabsTrigger value="video">Videos</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{filtered.length} {filtered.length === 1 ? "article" : "articles"} found</span>
+          {(search || selectedCategory !== "all") && (
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setSearch(""); setSelectedCategory("all"); }}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      </motion.div>
 
-        {["all", "guide", "tutorial", "video"].map((tab) => (
-          <TabsContent key={tab} value={tab} className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {filtered
-                .filter((a) => tab === "all" || a.type === tab)
-                .map((article, i) => {
-                  const TypeIcon = typeIcon[article.type as keyof typeof typeIcon] || FileText;
-                  return (
-                    <motion.div key={article.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.05 }}>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer group">
-                        <CardContent className="p-5 flex gap-4 items-start">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <article.icon className="w-5 h-5 text-primary" />
+      {/* Articles Grid */}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 0.2 }}
+      >
+        <AnimatePresence mode="popLayout">
+          {filtered.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              className="text-center py-16 bg-muted/20 rounded-lg border border-border/30"
+            >
+              <motion.div 
+                animate={{ y: [0, -8, 0] }} 
+                transition={{ duration: 3, repeat: Infinity }}
+                className="mb-4"
+              >
+                <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40" />
+              </motion.div>
+              <p className="text-base font-medium text-foreground">{t("knowledgeBase.noResults", { defaultValue: "No articles found" })}</p>
+              <p className="text-xs text-muted-foreground mt-1">Try adjusting your search or category filters</p>
+              <Button variant="outline" size="sm" className="mt-4 text-xs" onClick={() => { setSearch(""); setSelectedCategory("all"); }}>
+                Reset Filters
+              </Button>
+            </motion.div>
+          ) : (
+            <div className="space-y-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
+              {filtered.map((article, i) => {
+                const TypeIcon = typeIcon[article.type as keyof typeof typeIcon] || FileText;
+                const categoryColors: Record<string, { bg: string; text: string }> = {
+                  "Crop Management": { bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-600" },
+                  "Pest Control": { bg: "bg-red-50 dark:bg-red-950/30", text: "text-red-600" },
+                  "Irrigation": { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600" },
+                  "Soil Health": { bg: "bg-green-50 dark:bg-green-950/30", text: "text-green-600" },
+                  "Equipment": { bg: "bg-slate-50 dark:bg-slate-950/30", text: "text-slate-600" },
+                  "Organic Farming": { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600" },
+                };
+                const colors = categoryColors[article.category] || { bg: "bg-gray-50 dark:bg-gray-950/30", text: "text-gray-600" };
+
+                return (
+                  <motion.div 
+                    key={article.id} 
+                    initial={{ opacity: 0, y: 20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    exit={{ opacity: 0 }} 
+                    transition={{ delay: i * 0.02 }}
+                    className="group"
+                  >
+                    <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg border border-border/50 h-full hover:border-border cursor-pointer">
+                      <CardContent className="p-5 flex gap-4 h-full">
+                        {/* Icon */}
+                        <div className={`w-14 h-14 rounded-lg ${colors.bg} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
+                          <article.icon className={`w-6 h-6 ${colors.text}`} />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap gap-y-1">
+                            <Badge variant="secondary" className="text-[10px] gap-1 h-5 px-2">
+                              <TypeIcon className="w-3 h-3" />
+                              {t(`knowledgeBase.articleTypes.${article.type}`, { defaultValue: article.type })}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] h-5 px-2">{getCategoryLabel(article.category)}</Badge>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="secondary" className="text-xs gap-1">
-                                <TypeIcon className="w-3 h-3" />
-                                {article.type}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">{article.category}</Badge>
-                            </div>
-                            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{article.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{article.excerpt}</p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{article.readTime}</span>
-                              <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{article.views.toLocaleString()}</span>
-                              <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{article.likes}</span>
-                            </div>
+                          <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                            {article.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 line-clamp-2 flex-1">{article.excerpt}</p>
+                          <div className="flex items-center gap-3 mt-3 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
+                              <Clock className="w-3 h-3" />
+                              {article.readTime}
+                            </span>
+                            <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
+                              <Eye className="w-3 h-3" />
+                              {(article.views / 1000).toFixed(1)}k
+                            </span>
+                            <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded">
+                              <ThumbsUp className="w-3 h-3" />
+                              {article.likes}
+                            </span>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-2" />
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-            </AnimatePresence>
-            {filtered.filter((a) => tab === "all" || a.type === tab).length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <p>No articles found matching your search.</p>
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+                        </div>
+
+                        {/* Arrow Indicator */}
+                        <motion.div 
+                          className="w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 group-hover:bg-primary/20 group-hover:text-primary transition-colors mt-1"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </motion.div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

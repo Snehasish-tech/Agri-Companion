@@ -1,6 +1,7 @@
 import { Sprout, Mail, Phone, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import BrandLogo from "@/components/BrandLogo";
+import { useTranslation } from "react-i18next";
 
 const footerLinks = {
   Platform: ["AI Recommendations", "Marketplace", "Storage Solutions", "Direct Sales", "Weather"],
@@ -9,6 +10,8 @@ const footerLinks = {
 };
 
 export default function Footer() {
+  const { t } = useTranslation();
+
   return (
     <footer className="bg-foreground text-background/80">
       {/* Wave */}
@@ -23,22 +26,22 @@ export default function Footer() {
               <BrandLogo size="md" animated={false} />
             </div>
             <p className="text-background/60 text-xs sm:text-sm mb-4 sm:mb-6 max-w-xs leading-relaxed">
-              Empowering farmers with AI-driven insights, a complete marketplace, and direct market connections for a smarter, more profitable harvest.
+              {t("home.footer.description", { defaultValue: "Empowering farmers with AI-driven insights, a complete marketplace, and direct market connections for a smarter, more profitable harvest." })}
             </p>
             <div className="flex flex-col gap-2 text-xs sm:text-sm text-background/60">
-              <span className="flex items-center gap-2"><Mail className="w-4 h-4" /> support@krishigrowai.com</span>
-              <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> +91 1800-XXX-XXXX</span>
-              <span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> New Delhi, India</span>
+              <span className="flex items-center gap-2"><Mail className="w-4 h-4" /> {t("home.footer.contact.email", { defaultValue: "support@krishigrowai.com" })}</span>
+              <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {t("home.footer.contact.phone", { defaultValue: "+91 1800-XXX-XXXX" })}</span>
+              <span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {t("home.footer.contact.location", { defaultValue: "New Delhi, India" })}</span>
             </div>
           </div>
 
-          {Object.entries(footerLinks).map(([title, links]) => (
+          {Object.entries(footerLinks).map(([title, links], sectionIdx) => (
             <div key={title}>
-              <h4 className="font-heading font-semibold text-background mb-4 text-sm">{title}</h4>
+              <h4 className="font-heading font-semibold text-background mb-4 text-sm">{t(`home.footer.sections.${sectionIdx}.title`, { defaultValue: title })}</h4>
               <ul className="space-y-2.5">
-                {links.map((link) => (
+                {links.map((link, linkIdx) => (
                   <li key={link}>
-                    <a href="#" className="text-sm text-background/50 hover:text-accent transition-colors">{link}</a>
+                    <a href="#" className="text-sm text-background/50 hover:text-accent transition-colors">{t(`home.footer.sections.${sectionIdx}.links.${linkIdx}`, { defaultValue: link })}</a>
                   </li>
                 ))}
               </ul>
@@ -47,8 +50,8 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-background/10 mt-8 sm:mt-12 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-          <p className="text-xs text-background/40">© 2026 KrishiGrowAI. All rights reserved.</p>
-          <p className="text-xs text-background/40">Made with ❤️ for Indian Farmers</p>
+          <p className="text-xs text-background/40">{t("home.footer.copyright", { defaultValue: "© 2026 KrishiGrowAI. All rights reserved." })}</p>
+          <p className="text-xs text-background/40">{t("home.footer.tagline", { defaultValue: "Made with ❤️ for Indian Farmers" })}</p>
         </div>
       </div>
     </footer>

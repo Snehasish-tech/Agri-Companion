@@ -2,8 +2,11 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 export default function CTASection() {
+  const { t } = useTranslation();
+
   return (
     <section className="py-14 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6">
@@ -16,10 +19,10 @@ export default function CTASection() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,hsl(30_88%_65%/0.15),transparent)]" />
           <div className="relative">
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-primary-foreground mb-3 sm:mb-4">
-              Ready to Farm Smarter?
+              {t("home.cta.title", { defaultValue: "Ready to Farm Smarter?" })}
             </h2>
             <p className="text-primary-foreground/80 text-sm sm:text-lg max-w-xl mx-auto mb-6 sm:mb-8">
-              Join 10,000+ farmers who are already growing more and earning better with AI-powered insights.
+              {t("home.cta.subtitle", { defaultValue: "Join 10,000+ farmers who are already growing more and earning better with AI-powered insights." })}
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button
@@ -28,7 +31,7 @@ export default function CTASection() {
                 asChild
               >
                 <Link to="/dashboard">
-                  Get Started Free
+                  {t("home.cta.getStarted", { defaultValue: "Get Started Free" })}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Link>
               </Button>
@@ -37,7 +40,7 @@ export default function CTASection() {
                 variant="outline"
                 className="border-primary-foreground/30 text-primary-foreground bg-primary-foreground/10 hover:bg-primary-foreground/20 hover:text-primary-foreground text-base px-8 h-12"
               >
-                Talk to an Expert
+                {t("home.cta.talkToExpert", { defaultValue: "Talk to an Expert" })}
               </Button>
             </div>
           </div>

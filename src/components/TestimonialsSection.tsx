@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 const testimonials = [
   {
@@ -101,24 +102,26 @@ const testimonials = [
   },
 ];
 
-function TestimonialCard({ t }: { t: typeof testimonials[0] }) {
+function TestimonialCard({ item, index }: { item: typeof testimonials[0]; index: number }) {
+  const { t } = useTranslation();
+
   return (
     <div className="glass-card rounded-2xl p-5 sm:p-6 w-[280px] sm:w-[340px] shrink-0 flex flex-col justify-between hover:shadow-[var(--shadow-hover)] hover:-translate-y-1 transition-all duration-300">
       <div>
         <div className="flex items-center gap-1 mb-3">
-          {Array.from({ length: t.rating }).map((_, j) => (
+          {Array.from({ length: item.rating }).map((_, j) => (
             <Star key={j} className="w-3.5 h-3.5 fill-accent text-accent" />
           ))}
         </div>
-        <p className="text-foreground/80 mb-5 leading-relaxed text-sm line-clamp-4">"{t.text}"</p>
+        <p className="text-foreground/80 mb-5 leading-relaxed text-sm line-clamp-4">"{t(`home.testimonials.items.${index}.text`, { defaultValue: item.text })}"</p>
       </div>
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full gradient-hero flex items-center justify-center text-primary-foreground font-heading font-bold text-sm shrink-0">
-          {t.initials}
+          {item.initials}
         </div>
         <div className="min-w-0">
-          <p className="font-heading font-semibold text-sm text-foreground truncate">{t.name}</p>
-          <p className="text-xs text-muted-foreground truncate">{t.location} · {t.crop} Farmer</p>
+          <p className="font-heading font-semibold text-sm text-foreground truncate">{t(`home.testimonials.items.${index}.name`, { defaultValue: item.name })}</p>
+          <p className="text-xs text-muted-foreground truncate">{t(`home.testimonials.items.${index}.location`, { defaultValue: item.location })} · {t(`home.testimonials.items.${index}.crop`, { defaultValue: item.crop })} {t("home.testimonials.farmer", { defaultValue: "Farmer" })}</p>
         </div>
       </div>
     </div>
@@ -173,8 +176,8 @@ function ScrollingRow({ items, direction = "left", speed = 35 }: { items: typeof
   return (
     <div className="overflow-hidden">
       <div ref={scrollRef} className="flex gap-4 sm:gap-6 will-change-transform">
-        {doubled.map((t, i) => (
-          <TestimonialCard key={`${t.initials}-${i}`} t={t} />
+        {doubled.map((item, i) => (
+          <TestimonialCard key={`${item.initials}-${i}`} item={item} index={i % items.length} />
         ))}
       </div>
     </div>
@@ -182,6 +185,8 @@ function ScrollingRow({ items, direction = "left", speed = 35 }: { items: typeof
 }
 
 export default function TestimonialsSection() {
+  const { t } = useTranslation();
+
   return (
     <section id="community" className="py-14 sm:py-24 bg-muted/50 overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6">
@@ -191,12 +196,12 @@ export default function TestimonialsSection() {
           viewport={{ once: true }}
           className="text-center mb-10 sm:mb-14"
         >
-          <span className="text-sm font-semibold text-secondary uppercase tracking-wider">Real Stories</span>
+          <span className="text-sm font-semibold text-secondary uppercase tracking-wider">{t("home.testimonials.badge", { defaultValue: "Real Stories" })}</span>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-foreground mt-2 mb-3">
-            Trusted by <span className="text-gradient-warm">Thousands</span> of Farmers
+            {t("home.testimonials.titlePrefix", { defaultValue: "Trusted by" })} <span className="text-gradient-warm">{t("home.testimonials.titleHighlight", { defaultValue: "Thousands" })}</span> {t("home.testimonials.titleSuffix", { defaultValue: "of Farmers" })}
           </h2>
           <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto">
-            Hear from real farmers who transformed their harvest and income with KrishiGrowAI.
+            {t("home.testimonials.subtitle", { defaultValue: "Hear from real farmers who transformed their harvest and income with KrishiGrowAI." })}
           </p>
         </motion.div>
       </div>

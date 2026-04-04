@@ -1,5 +1,6 @@
 import { MapPin, Brain, LineChart, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 const steps = [
   { icon: MapPin, title: "Enter Farm Details", desc: "Share your location, soil type, and resources — it takes just 2 minutes.", step: "01" },
@@ -9,6 +10,8 @@ const steps = [
 ];
 
 export default function HowItWorks() {
+  const { t } = useTranslation();
+
   return (
     <section id="how-it-works" className="py-16 sm:py-24 gradient-hero">
       <div className="container mx-auto px-4 sm:px-6">
@@ -18,12 +21,12 @@ export default function HowItWorks() {
           viewport={{ once: true }}
           className="text-center mb-12 sm:mb-16"
         >
-          <span className="text-accent font-semibold text-sm uppercase tracking-widest">Simple Process</span>
+          <span className="text-accent font-semibold text-sm uppercase tracking-widest">{t("home.howItWorks.badge", { defaultValue: "Simple Process" })}</span>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-primary-foreground mt-2 mb-4">
-            How KrishiGrowAI Works
+            {t("home.howItWorks.title", { defaultValue: "How KrishiGrowAI Works" })}
           </h2>
           <p className="text-primary-foreground/70 max-w-xl mx-auto text-sm sm:text-lg">
-            Four simple steps to transform your farming journey.
+            {t("home.howItWorks.subtitle", { defaultValue: "Four simple steps to transform your farming journey." })}
           </p>
         </motion.div>
 
@@ -50,10 +53,10 @@ export default function HowItWorks() {
                   </span>
                 </div>
                 <h3 className="font-heading font-bold text-base sm:text-lg text-primary-foreground mb-2">
-                  {step.title}
+                  {t(`home.howItWorks.steps.${i}.title`, { defaultValue: step.title })}
                 </h3>
                 <p className="text-primary-foreground/60 text-xs sm:text-sm leading-relaxed">
-                  {step.desc}
+                  {t(`home.howItWorks.steps.${i}.desc`, { defaultValue: step.desc })}
                 </p>
               </motion.div>
             ))}

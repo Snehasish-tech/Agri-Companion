@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Marketplace", href: "#marketplace" },
-  { label: "Community", href: "#community" },
+  { labelKey: "navbar.features", href: "#features" },
+  { labelKey: "navbar.howItWorks", href: "#how-it-works" },
+  { labelKey: "navbar.marketplace", href: "#marketplace" },
+  { labelKey: "navbar.community", href: "#community" },
 ];
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
@@ -72,7 +75,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-1 shrink-0">
           {navLinks.map((link) => (
             <a
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               onClick={(e) => handleNavClick(e, link.href)}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
@@ -81,13 +84,14 @@ export default function Navbar() {
                   : "text-white/60 dark:text-black/70 hover:text-white dark:hover:text-black hover:bg-white/5 dark:hover:bg-black/10"
               }`}
             >
-              {link.label}
+              {t(link.labelKey)}
             </a>
           ))}
         </div>
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher className="border-white/10 bg-white/5 text-white/70" />
           <ThemeToggle />
           <Button 
             variant="ghost" 
@@ -95,14 +99,14 @@ export default function Navbar() {
             className="text-white/60 dark:text-black/70 hover:text-white dark:hover:text-black hover:bg-white/5 dark:hover:bg-black/10 font-medium"
             asChild
           >
-            <Link to="/auth">Login</Link>
+            <Link to="/auth">{t("navbar.login")}</Link>
           </Button>
           <Button
             size="sm"
             className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-5 rounded-lg shadow-lg shadow-emerald-500/20"
             asChild
           >
-            <Link to="/auth">Get Started</Link>
+            <Link to="/auth">{t("navbar.getStarted")}</Link>
           </Button>
         </div>
 
@@ -130,7 +134,7 @@ export default function Navbar() {
             <div className="container mx-auto px-4 py-4 space-y-2">
               {navLinks.map((link) => (
                 <a
-                  key={link.label}
+                  key={link.labelKey}
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
                   className={`block px-4 py-3 text-sm font-medium rounded-lg transition-all ${
@@ -139,24 +143,25 @@ export default function Navbar() {
                       : "text-white/60 dark:text-black/70 hover:text-white dark:hover:text-black hover:bg-white/5 dark:hover:bg-black/10"
                   }`}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </a>
               ))}
               <div className="pt-2 space-y-2">
+                <LanguageSwitcher className="w-full justify-center border-white/10 bg-white/5 text-white/80" />
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="w-full border-white/10 dark:border-black/20 text-white/70 dark:text-black/70 hover:text-white dark:hover:text-black hover:bg-white/5 dark:hover:bg-black/10"
                   asChild
                 >
-                  <Link to="/auth">Login</Link>
+                  <Link to="/auth">{t("navbar.login")}</Link>
                 </Button>
                 <Button
                   size="sm"
                   className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
                   asChild
                 >
-                  <Link to="/auth">Get Started</Link>
+                  <Link to="/auth">{t("navbar.getStarted")}</Link>
                 </Button>
               </div>
             </div>

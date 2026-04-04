@@ -4,6 +4,7 @@ import { Send, Bot, User, Sparkles, Leaf, CloudSun, TrendingUp, Bug, X, Upload, 
 import { Button } from "@/components/ui/button";
 import { MediaFile } from "@/components/MediaUpload";
 import { MediaData } from "@/components/MediaGallery";
+import { useTranslation } from "react-i18next";
 
 type Msg = { role: "user" | "assistant"; content: string; media?: MediaData[] };
 
@@ -17,15 +18,22 @@ const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile";
 const GROQ_VISION_MODEL = import.meta.env.VITE_GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
 
 const quickReplies = [
-  { label: "Best Rabi crops?", icon: Leaf },
-  { label: "Weather forecast for wheat", icon: CloudSun },
-  { label: "Current tomato prices", icon: TrendingUp },
-  { label: "Pest control for rice", icon: Bug },
+  { labelKey: "chatbot.quickReplies.rabi", fallback: "Best Rabi crops?", icon: Leaf },
+  { labelKey: "chatbot.quickReplies.weather", fallback: "Weather forecast for wheat", icon: CloudSun },
+  { labelKey: "chatbot.quickReplies.tomatoPrices", fallback: "Current tomato prices", icon: TrendingUp },
+  { labelKey: "chatbot.quickReplies.pestControl", fallback: "Pest control for rice", icon: Bug },
 ];
 
 export default function Chatbot() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: "Namaste! 🙏 I'm your AI farming assistant. Ask me anything about crops, weather, soil, prices, or farming techniques. How can I help you today?" },
+    {
+      role: "assistant",
+      content: t(
+        "chatbot.welcome",
+        "Namaste! I'm your AI farming assistant. Ask me anything about crops, weather, soil, prices, or farming techniques. How can I help you today?"
+      ),
+    },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -99,12 +107,16 @@ export default function Chatbot() {
       name: m.file.name,
     }));
 
-    const userMsg: Msg = { role: "user", content: text.trim() || "Analyzing image...", media: mediaData.length > 0 ? mediaData : undefined };
+    const userMsg: Msg = {
+      role: "user",
+      content: text.trim() || t("chatbot.status.analyzingImage", "Analyzing image..."),
+      media: mediaData.length > 0 ? mediaData : undefined,
+    };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setSelectedMedia([]);
     setIsLoading(true);
-    setImageSendingStatus(mediaData.length > 0 ? "Analyzing image..." : null);
+    setImageSendingStatus(mediaData.length > 0 ? t("chatbot.status.analyzingImage", "Analyzing image...") : null);
 
     try {
       const allMessages = [...messages, userMsg].filter((m) => m.content);
@@ -153,7 +165,7 @@ export default function Chatbot() {
       const shouldTryEdge = !!(USE_EDGE_FUNCTION && CHAT_URL && SUPABASE_PUBLISHABLE_KEY && edgeFunctionHealthy && !hasImage);
       if (shouldTryEdge) {
         try {
-          setImageSendingStatus("Sending to AI...");
+          setImageSendingStatus(t("chatbot.status.sendingToAi", "Sending to AI..."));
           const edgeResp = await fetch(CHAT_URL, {
             method: "POST",
             headers: {
@@ -164,7 +176,7 @@ export default function Chatbot() {
           });
 
           if (edgeResp.ok && edgeResp.body && edgeResp.headers.get("content-type")?.includes("text/event-stream")) {
-            setImageSendingStatus("Processing...");
+            setImageSendingStatus(t("chatbot.status.processing", "Processing..."));
             const reader = edgeResp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
@@ -199,7 +211,7 @@ export default function Chatbot() {
             if (edgeResp.status >= 500) {
               setEdgeFunctionHealthy(false);
             }
-            throw new Error(edgeErr.error || "Supabase chat function failed");
+            throw new Error(edgeErr.error || t("chatbot.errors.edgeFailed", "Supabase chat function failed"));
           }
         } catch (edgeError) {
           setEdgeFunctionHealthy(false);
@@ -213,11 +225,18 @@ export default function Chatbot() {
       if (!reply) {
         if (!GROQ_API_KEY) {
           throw new Error(
-            "AI is not configured. Set Supabase function credentials or add VITE_GROQ_API_KEY in Vercel Environment Variables."
+            t(
+              "chatbot.errors.notConfigured",
+              "AI is not configured. Set Supabase function credentials or add VITE_GROQ_API_KEY in Vercel Environment Variables."
+            )
           );
         }
 
-        setImageSendingStatus(hasImage ? "Analyzing image with AI..." : "Analyzing with AI...");
+        setImageSendingStatus(
+          hasImage
+            ? t("chatbot.status.analyzingWithAiImage", "Analyzing image with AI...")
+            : t("chatbot.status.analyzingWithAi", "Analyzing with AI...")
+        );
         const response = await fetch(GROQ_URL, {
           method: "POST",
           headers: {
@@ -264,11 +283,14 @@ Guidelines:
         setImageSendingStatus(null);
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          const apiMessage = errData.error?.message || "Failed to get response from AI";
+          const apiMessage = errData.error?.message || t("chatbot.errors.failedResponse", "Failed to get response from AI");
 
           if (typeof apiMessage === "string" && apiMessage.toLowerCase().includes("decommissioned")) {
             throw new Error(
-              "The selected Groq model is deprecated. Update VITE_GROQ_MODEL to a currently supported model and restart the app."
+              t(
+                "chatbot.errors.modelDeprecated",
+                "The selected Groq model is deprecated. Update VITE_GROQ_MODEL to a currently supported model and restart the app."
+              )
             );
           }
 
@@ -281,14 +303,24 @@ Guidelines:
 
       setImageSendingStatus(null);
       if (!reply) {
-        reply = "I apologize, I couldn't process that. Please try again.";
+        reply = t("chatbot.errors.emptyReply", "I apologize, I couldn't process that. Please try again.");
       }
       
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (e: any) {
       console.error("Chat error:", e);
       setImageSendingStatus(null);
-      setMessages((prev) => [...prev, { role: "assistant", content: `Sorry, something went wrong: ${e.message}. Please try again.` }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: t(
+            "chatbot.errors.generic",
+            "Sorry, something went wrong: {{message}}. Please try again.",
+            { message: e.message }
+          ),
+        },
+      ]);
     } finally {
       setIsLoading(false);
       setImageSendingStatus(null);
@@ -304,8 +336,8 @@ Guidelines:
           <Sparkles className="w-5 h-5 text-accent" />
         </div>
         <div>
-          <h1 className="text-lg font-heading font-bold text-foreground">KrishiAI Assistant</h1>
-          <p className="text-xs text-muted-foreground">Powered by AI • Ask anything about farming</p>
+          <h1 className="text-lg font-heading font-bold text-foreground">{t("chatbot.title", "KrishiAI Assistant")}</h1>
+          <p className="text-xs text-muted-foreground">{t("chatbot.subtitle", "Powered by AI - Ask anything about farming")}</p>
         </div>
       </div>
 
@@ -373,7 +405,7 @@ Guidelines:
                   <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
                 <span className="text-xs text-muted-foreground ml-1">
-                  {imageSendingStatus || "Thinking..."}
+                  {imageSendingStatus || t("chatbot.status.thinking", "Thinking...")}
                 </span>
               </div>
             </div>
@@ -387,12 +419,12 @@ Guidelines:
         <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
           {quickReplies.map((q) => (
             <button
-              key={q.label}
-              onClick={() => sendMessage(q.label)}
+              key={q.labelKey}
+              onClick={() => sendMessage(t(q.labelKey, q.fallback))}
               className="flex items-center gap-2 px-3 py-2 rounded-xl glass-card text-xs text-foreground hover:bg-muted/50 transition-colors shrink-0"
             >
               <q.icon className="w-3 h-3 text-primary" />
-              {q.label}
+              {t(q.labelKey, q.fallback)}
             </button>
           ))}
         </div>
@@ -416,7 +448,7 @@ Guidelines:
               )}
               <button
                 type="button"
-                aria-label="Remove selected media"
+                aria-label={t("chatbot.actions.removeMedia", "Remove selected media")}
                 onClick={() => {
                   const updated = selectedMedia.filter((x) => x.id !== m.id);
                   setSelectedMedia(updated);
@@ -461,7 +493,7 @@ Guidelines:
                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Upload className="w-4 h-4 text-primary" />
-                <span>Upload Image</span>
+                <span>{t("chatbot.actions.uploadImage", "Upload Image")}</span>
               </button>
               <div className="border-t border-border" />
               <button
@@ -472,7 +504,7 @@ Guidelines:
                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
               >
                 <Camera className="w-4 h-4 text-primary" />
-                <span>Use Camera</span>
+                <span>{t("chatbot.actions.useCamera", "Use Camera")}</span>
               </button>
             </motion.div>
           )}
@@ -499,7 +531,7 @@ Guidelines:
         <input
           ref={inputRef}
           type="text"
-          placeholder="Ask me anything... or upload an image"
+          placeholder={t("chatbot.inputPlaceholder", "Ask me anything... or upload an image")}
           className="flex-1 bg-muted rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 ring-primary/30 transition-all"
           value={input}
           onChange={(e) => setInput(e.target.value)}

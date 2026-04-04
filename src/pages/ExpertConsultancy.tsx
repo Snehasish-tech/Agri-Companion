@@ -17,6 +17,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import PaymentDialog from "@/components/PaymentDialog";
 
 interface Expert {
   id: string;
@@ -162,6 +164,7 @@ const mapBookingRows = (rows: any[]): ExpertBooking[] => {
 
 export default function ExpertConsultancy() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [experts, setExperts] = useState<Expert[]>([]);
   const [myBookings, setMyBookings] = useState<ExpertBooking[]>([]);
@@ -174,6 +177,7 @@ export default function ExpertConsultancy() {
   const [bookingDuration, setBookingDuration] = useState<"daily" | "monthly">("daily");
   const [bookingDate, setBookingDate] = useState("");
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   // Fetch experts
   useEffect(() => {
@@ -199,8 +203,8 @@ export default function ExpertConsultancy() {
         setExperts(FALLBACK_EXPERTS);
         setUsingFallbackExperts(true);
         toast({
-          title: "Live expert data unavailable",
-          description: "Showing demo experts now. Please verify Supabase URL/network for live data.",
+          title: t("expert.toast.liveDataUnavailable", "Live expert data unavailable"),
+          description: t("expert.toast.showingDemo", "Showing demo experts now. Please verify Supabase URL/network for live data."),
         });
       } finally {
         setLoading(false);
@@ -248,16 +252,23 @@ export default function ExpertConsultancy() {
   // Get unique specialties
   const specialties = Array.from(new Set(experts.map((e) => e.specialty)));
 
-  // Handle booking submission
-  const handleBooking = async () => {
+  // Open payment UI first; create booking only after successful payment
+  const handleProceedToPayment = () => {
     if (!user || !selectedExpert || !bookingDate) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
+        title: t("expert.toast.missingInfo", "Missing Information"),
+        description: t("expert.toast.fillRequired", "Please fill in all required fields"),
         variant: "destructive",
       });
       return;
     }
+
+    setPaymentDialogOpen(true);
+  };
+
+  // Create booking only after payment is successful
+  const handleBookingAfterPayment = async () => {
+    if (!user || !selectedExpert || !bookingDate) return;
 
     setProcessingPayment(true);
     try {
@@ -267,7 +278,7 @@ export default function ExpertConsultancy() {
           : selectedExpert.monthly_rate;
 
       // Create booking
-      const { data: booking, error: bookingError } = await supabase
+      const { error: bookingError } = await supabase
         .from("expert_bookings")
         .insert({
           user_id: user.id,
@@ -275,34 +286,24 @@ export default function ExpertConsultancy() {
           booking_date: bookingDate,
           duration: bookingDuration,
           total_amount: bookingAmount,
-          status: "pending",
-          payment_status: "pending",
+          status: "confirmed",
+          payment_status: "completed",
         })
         .select()
         .single();
 
       if (bookingError) throw bookingError;
 
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Mark as payment completed
-      const { error: updateError } = await supabase
-        .from("expert_bookings")
-        .update({
-          payment_status: "completed",
-          status: "confirmed",
-        })
-        .eq("id", booking.id);
-
-      if (updateError) throw updateError;
-
       toast({
-        title: "Booking Confirmed!",
-        description: `Your consultation with ${selectedExpert.name} has been booked for ₹${bookingAmount}`,
+        title: t("expert.toast.bookingConfirmed", "Booking Confirmed!"),
+        description: t("expert.toast.bookingDescription", "Your consultation with {{name}} has been booked for ₹{{amount}}", {
+          name: selectedExpert.name,
+          amount: bookingAmount,
+        }),
       });
 
       // Reset and close
+  setPaymentDialogOpen(false);
       setBookingDialogOpen(false);
       setSelectedExpert(null);
       setBookingDate("");
@@ -319,8 +320,8 @@ export default function ExpertConsultancy() {
     } catch (error: any) {
       console.error("Booking error:", error);
       toast({
-        title: "Booking Failed",
-        description: error.message || "Failed to complete booking",
+        title: t("expert.toast.bookingFailed", "Booking Failed"),
+        description: error.message || t("expert.toast.bookingFailedDescription", "Failed to complete booking"),
         variant: "destructive",
       });
     } finally {
@@ -339,15 +340,15 @@ export default function ExpertConsultancy() {
       if (error) throw error;
 
       toast({
-        title: "Booking Cancelled",
-        description: "Your booking has been cancelled successfully",
+        title: t("expert.toast.bookingCancelled", "Booking Cancelled"),
+        description: t("expert.toast.bookingCancelledDescription", "Your booking has been cancelled successfully"),
       });
 
       setMyBookings(myBookings.filter((b) => b.id !== bookingId));
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to cancel booking",
+        title: t("expert.toast.error", "Error"),
+        description: t("expert.toast.cancelFailed", "Failed to cancel booking"),
         variant: "destructive",
       });
     }
@@ -373,16 +374,16 @@ export default function ExpertConsultancy() {
           <div className="mb-2">
             <h1 className="font-heading text-3xl font-bold text-foreground mb-2">
               <BookOpen className="w-10 h-10 inline-block mr-3 text-primary" />
-              Expert Consultancy Booking
+              {t("expert.title", "Expert Consultancy Booking")}
             </h1>
             <p className="text-muted-foreground max-w-3xl">
-              Connect with 80+ certified agricultural experts for personalized consulting. Book daily or monthly sessions at affordable rates.
+              {t("expert.subtitle", "Connect with certified agricultural experts for personalized consulting. Book daily or monthly sessions at affordable rates.")}
             </p>
           </div>
 
           {usingFallbackExperts && (
             <div className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">
-              Live Supabase data is currently unreachable. Showing demo experts so the feature remains usable.
+              {t("expert.fallbackBanner", "Live Supabase data is currently unreachable. Showing demo experts so the feature remains usable.")}
             </div>
           )}
 
@@ -394,7 +395,7 @@ export default function ExpertConsultancy() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{experts.length}+</p>
-                <p className="text-sm text-muted-foreground">Certified Experts</p>
+                <p className="text-sm text-muted-foreground">{t("expert.stats.certifiedExperts", "Certified Experts")}</p>
               </div>
             </div>
             <div className="glass-card p-6 flex items-center gap-4">
@@ -403,7 +404,7 @@ export default function ExpertConsultancy() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">4.8★</p>
-                <p className="text-sm text-muted-foreground">Average Rating</p>
+                <p className="text-sm text-muted-foreground">{t("expert.stats.averageRating", "Average Rating")}</p>
               </div>
             </div>
             <div className="glass-card p-6 flex items-center gap-4">
@@ -411,8 +412,8 @@ export default function ExpertConsultancy() {
                 <CheckCircle className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">Verified</p>
-                <p className="text-sm text-muted-foreground">Quality Check</p>
+                <p className="text-2xl font-bold text-foreground">{t("expert.stats.verified", "Verified")}</p>
+                <p className="text-sm text-muted-foreground">{t("expert.stats.qualityCheck", "Quality Check")}</p>
               </div>
             </div>
           </div>
@@ -427,7 +428,7 @@ export default function ExpertConsultancy() {
           >
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-primary" />
-              My Active Bookings
+              {t("expert.myActiveBookings", "My Active Bookings")}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {myBookings
@@ -470,7 +471,9 @@ export default function ExpertConsultancy() {
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                           <Clock className="w-4 h-4 text-primary" />
                         </div>
-                        {booking.duration === "daily" ? "Full Day Consultation" : "Monthly Support Plan"}
+                        {booking.duration === "daily"
+                          ? t("expert.duration.fullDay", "Full Day Consultation")
+                          : t("expert.duration.monthlyPlan", "Monthly Support Plan")}
                       </div>
                       <div className="flex items-center gap-3 text-sm font-bold bg-primary/5 p-3 rounded-lg border border-primary/10">
                         <DollarSign className="w-5 h-5 text-primary" />
@@ -484,7 +487,7 @@ export default function ExpertConsultancy() {
                           onClick={() => handleCancelBooking(booking.id)}
                         >
                           <X className="w-4 h-4 mr-2" />
-                          Cancel Consultation
+                          {t("expert.actions.cancelConsultation", "Cancel Consultation")}
                         </Button>
                       )}
                     </CardContent>
@@ -501,10 +504,10 @@ export default function ExpertConsultancy() {
               <div>
                 <Label className="text-xs font-semibold text-muted-foreground mb-2 block">
                   <Search className="w-4 h-4 inline mr-2" />
-                  Search Expert
+                  {t("expert.searchExpert", "Search Expert")}
                 </Label>
                 <Input
-                  placeholder="Name, specialty, or skills..."
+                  placeholder={t("expert.searchPlaceholder", "Name, specialty, or skills...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -512,14 +515,14 @@ export default function ExpertConsultancy() {
               <div>
                 <Label className="text-xs font-semibold text-muted-foreground mb-2 block">
                   <Filter className="w-4 h-4 inline mr-2" />
-                  Specialty
+                  {t("expert.specialty", "Specialty")}
                 </Label>
                 <Select value={specialtyFilter || "all"} onValueChange={(val) => setSpecialtyFilter(val === "all" ? "" : val)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All Specialties" />
+                    <SelectValue placeholder={t("expert.allSpecialties", "All Specialties")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Specialties</SelectItem>
+                    <SelectItem value="all">{t("expert.allSpecialties", "All Specialties")}</SelectItem>
                     {specialties.map((specialty) => (
                       <SelectItem key={specialty} value={specialty}>
                         {specialty}
@@ -537,7 +540,7 @@ export default function ExpertConsultancy() {
                   variant="outline"
                   className="w-full"
                 >
-                  Clear Filters
+                  {t("expert.clearFilters", "Clear Filters")}
                 </Button>
               </div>
             </div>
@@ -548,7 +551,7 @@ export default function ExpertConsultancy() {
         {filteredExperts.length === 0 ? (
           <Card className="text-center py-12 border-2 border-dashed">
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground font-medium">No experts found matching your criteria</p>
+            <p className="text-muted-foreground font-medium">{t("expert.noExperts", "No experts found matching your criteria")}</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -628,7 +631,7 @@ export default function ExpertConsultancy() {
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground font-medium">
-                          {expert.reviews_count} Reviews
+                          {expert.reviews_count} {t("expert.reviews", "Reviews")}
                         </span>
                       </div>
 
@@ -648,7 +651,10 @@ export default function ExpertConsultancy() {
 
                       {/* Book Button */}
                       <Dialog open={bookingDialogOpen && selectedExpert?.id === expert.id} onOpenChange={(open) => {
-                        if (!open) setSelectedExpert(null);
+                        if (!open) {
+                          setSelectedExpert(null);
+                          setPaymentDialogOpen(false);
+                        }
                         setBookingDialogOpen(open);
                       }}>
                         <DialogTrigger asChild>
@@ -659,7 +665,7 @@ export default function ExpertConsultancy() {
                               setBookingDialogOpen(true);
                             }}
                           >
-                            Explore Profile & Book
+                            {t("expert.actions.exploreAndBook", "Explore Profile & Book")}
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -725,8 +731,8 @@ export default function ExpertConsultancy() {
                                                     <Clock className={`w-5 h-5 ${bookingDuration === "daily" ? "text-white" : "text-primary"}`} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold">Instant Consultation</p>
-                                                    <p className={`text-[10px] uppercase font-bold tracking-widest ${bookingDuration === "daily" ? "text-white/80" : "text-muted-foreground"}`}>1 Day Access</p>
+                                                  <p className="font-bold">{t("expert.plans.instantTitle", "Instant Consultation")}</p>
+                                                  <p className={`text-[10px] uppercase font-bold tracking-widest ${bookingDuration === "daily" ? "text-white/80" : "text-muted-foreground"}`}>{t("expert.plans.instantSub", "1 Day Access")}</p>
                                                 </div>
                                               </div>
                                               <p className="text-lg font-black">₹{expert.daily_rate}</p>
@@ -745,8 +751,8 @@ export default function ExpertConsultancy() {
                                                     <Calendar className={`w-5 h-5 ${bookingDuration === "monthly" ? "text-white" : "text-primary"}`} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold">Monthly Expert Care</p>
-                                                    <p className={`text-[10px] uppercase font-bold tracking-widest ${bookingDuration === "monthly" ? "text-white/80" : "text-muted-foreground"}`}>Unlimited Support</p>
+                                                  <p className="font-bold">{t("expert.plans.monthlyTitle", "Monthly Expert Care")}</p>
+                                                  <p className={`text-[10px] uppercase font-bold tracking-widest ${bookingDuration === "monthly" ? "text-white/80" : "text-muted-foreground"}`}>{t("expert.plans.monthlySub", "Unlimited Support")}</p>
                                                 </div>
                                               </div>
                                               <p className="text-lg font-black">₹{expert.monthly_rate}</p>
@@ -785,25 +791,33 @@ export default function ExpertConsultancy() {
                                 onClick={() => setBookingDialogOpen(false)}
                                 className="flex-1 font-bold uppercase tracking-widest text-xs h-12"
                               >
-                                Go Back
+                                {t("expert.actions.goBack", "Go Back")}
                               </Button>
                               <Button
-                                onClick={handleBooking}
+                                onClick={handleProceedToPayment}
                                 disabled={!bookingDate || processingPayment}
                                 className="flex-[2] h-12 font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-sm shadow-xl shadow-primary/30"
                               >
                                 {processingPayment ? (
                                   <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Verifying Payment...
+                                    {t("expert.verifyingPayment", "Verifying Payment...")}
                                   </>
                                 ) : (
                                   <>
-                                    Start Consultation & Pay ₹{bookingDuration === "daily" ? expert.daily_rate : expert.monthly_rate}
+                                    {t("expert.actions.startConsultation", "Start Consultation & Pay")} ₹{bookingDuration === "daily" ? expert.daily_rate : expert.monthly_rate}
                                   </>
                                 )}
                               </Button>
                             </div>
+
+                            <PaymentDialog
+                              open={paymentDialogOpen}
+                              onOpenChange={setPaymentDialogOpen}
+                              amount={bookingDuration === "daily" ? expert.daily_rate : expert.monthly_rate}
+                              description={t("expert.paymentDescription", "Expert consultation with {{name}}", { name: expert.name })}
+                              onSuccess={handleBookingAfterPayment}
+                            />
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -820,10 +834,10 @@ export default function ExpertConsultancy() {
           <Card className="text-center py-12 border-2 border-dashed">
             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground font-medium mb-2">
-              Please log in to book a consultation
+              {t("expert.loginToBook", "Please log in to book a consultation")}
             </p>
             <Button onClick={() => window.location.href = "/auth"}>
-              Sign In / Sign Up
+              {t("expert.actions.signInUp", "Sign In / Sign Up")}
             </Button>
           </Card>
         )}
