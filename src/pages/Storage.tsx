@@ -494,8 +494,8 @@ export default function Storage() {
                   transition={{ duration: 0.2, delay: Math.min(i * 0.015, 0.12) }}
                   className="glass-card rounded-xl overflow-hidden hover:shadow-[var(--shadow-hover)]"
                 >
-                  <div className="flex gap-0">
-                    <div className="relative w-32 sm:w-48 flex-shrink-0 overflow-hidden">
+                  <div className="flex flex-col sm:flex-row gap-0">
+                    <div className="relative h-40 sm:h-auto w-full sm:w-48 flex-shrink-0 overflow-hidden">
                       <img
                         src={facility.image}
                         alt={facility.name}
@@ -540,23 +540,23 @@ export default function Storage() {
                           ))}
                         </div>
                       </div>
-                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 sm:min-w-[140px]">
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 justify-end">
+                      <div className="flex sm:flex-col items-stretch sm:items-end justify-between sm:justify-center gap-3 w-full sm:w-auto sm:min-w-[140px]">
+                        <div className="text-left sm:text-right">
+                          <div className="flex items-center gap-1 justify-start sm:justify-end">
                             <Star className="w-3.5 h-3.5 text-accent fill-accent" />
                             <span className="font-semibold text-foreground text-sm">{facility.rating}</span>
                             <span className="text-muted-foreground text-xs">({facility.reviews})</span>
                           </div>
-                          <div className="flex items-center font-mono font-bold text-foreground text-lg justify-end">
+                          <div className="flex items-center font-mono font-bold text-foreground text-lg justify-start sm:justify-end">
                             <IndianRupee className="w-4 h-4" />
                             {facility.pricePerQuintal}
                           </div>
-                          <div className="text-xs text-muted-foreground text-right">{t("storage.facilityDetails.perQtlMonthLong", { defaultValue: "per qtl/month" })}</div>
+                          <div className="text-xs text-muted-foreground text-left sm:text-right">{t("storage.facilityDetails.perQtlMonthLong", { defaultValue: "per qtl/month" })}</div>
                         </div>
                         <Button
                           onClick={() => handleBook(facility)}
                           size="sm"
-                          className="gradient-hero text-primary-foreground border-0 hover:opacity-90 whitespace-nowrap"
+                          className="gradient-hero text-primary-foreground border-0 hover:opacity-90 whitespace-nowrap w-full sm:w-auto"
                         >
                           <CreditCard className="w-3.5 h-3.5 mr-1" /> {t("storage.facilityDetails.bookNow", { defaultValue: "Book Now" })}
                         </Button>
@@ -599,7 +599,7 @@ export default function Storage() {
 
       {/* Booking Dialog */}
       <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
-        <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-lg mx-4">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-heading">{t("storage.facilityDetails.bookNow", { defaultValue: "Book Storage" })}</DialogTitle>
             <DialogDescription>

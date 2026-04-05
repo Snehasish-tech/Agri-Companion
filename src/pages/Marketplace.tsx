@@ -288,7 +288,7 @@ export default function Marketplace() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {[
           { icon: Package, value: "5000+", label: t("marketplace.stats.products", "Products"), color: "text-primary" },
@@ -484,6 +484,108 @@ export default function Marketplace() {
             </motion.div>
           ))}
         </div>
+
+        {/* Mobile Cart Drawer */}
+        <AnimatePresence>
+          {showCart && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                onClick={() => setShowCart(false)}
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 26, stiffness: 220 }}
+                className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
+              >
+                <div className="glass-card rounded-t-2xl p-4 max-h-[78vh] overflow-hidden border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-heading font-semibold text-foreground">
+                      {t("marketplace.cart", "Cart")} ({cartCount})
+                    </h3>
+                    <button onClick={() => setShowCart(false)}>
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+
+                  {cart.length === 0 ? (
+                    <div className="text-center py-8">
+                      <ShoppingCart className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">{t("marketplace.cartEmpty", "Cart is empty")}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("marketplace.cartEmptyHint", "Add items to get started")}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
+                        {cart.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                          >
+                            <span className="text-2xl">{item.image}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground line-clamp-1">{item.name}</p>
+                              <p className="text-xs text-muted-foreground font-numbers">
+                                ₹{item.price.toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => updateQty(item.id, -1)}
+                                className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-muted/80"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="text-sm font-numbers w-6 text-center">{item.qty}</span>
+                              <button
+                                onClick={() => updateQty(item.id, 1)}
+                                className="w-6 h-6 rounded bg-muted flex items-center justify-center hover:bg-muted/80"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t border-border mt-4 pt-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{t("marketplace.subtotal", "Subtotal")}</span>
+                          <span className="font-numbers text-foreground">
+                            ₹{cartTotal.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{t("marketplace.delivery", "Delivery")}</span>
+                          <span className="font-numbers text-success">
+                            {cartTotal >= 999 ? t("marketplace.stats.free", "Free") : "₹49"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium">
+                          <span className="text-foreground">{t("marketplace.total", "Total")}</span>
+                          <span className="font-numbers font-bold text-foreground">
+                            ₹{(cartTotal + (cartTotal >= 999 ? 0 : 49)).toLocaleString()}
+                          </span>
+                        </div>
+                        <Button
+                          className="w-full gradient-warm text-secondary-foreground border-0 hover:opacity-90"
+                          onClick={() => setPaymentOpen(true)}
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" /> {t("marketplace.checkout", "Checkout")}{" "}
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Cart Sidebar */}
         <AnimatePresence>

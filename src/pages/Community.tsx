@@ -669,7 +669,7 @@ export default function Community() {
                 <Plus className="w-4 h-4" /> {t("community.actions.newPost", "New Post")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl mx-4">
+            <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="font-heading text-xl">{t("community.dialog.shareKnowledge", "Share Your Knowledge")}</DialogTitle>
               </DialogHeader>
@@ -957,7 +957,7 @@ export default function Community() {
 
       {/* Post Detail Dialog */}
       <Dialog open={!!selectedPost} onOpenChange={(open) => !open && setSelectedPost(null)}>
-        <DialogContent className="w-full max-h-[90vh] overflow-y-auto sm:max-w-2xl mx-4">
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] sm:max-w-2xl">
           {selectedPost && (
             <>
               <DialogHeader className="border-b pb-4">
@@ -1025,7 +1025,7 @@ export default function Community() {
                   ))}
                 </div>
 
-                <div className="flex items-center gap-6 text-muted-foreground border-y border-border py-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-muted-foreground border-y border-border py-4">
                   <button
                     onClick={() => handleLike(selectedPost.id)}
                     className={`flex items-center gap-2 text-sm font-medium transition-all ${
@@ -1042,7 +1042,7 @@ export default function Community() {
                   </span>
                   <button
                     onClick={() => handleSharePost(selectedPost)}
-                    className="flex items-center gap-2 text-sm font-medium hover:text-foreground ml-auto"
+                    className="flex items-center justify-center sm:justify-start gap-2 text-sm font-medium hover:text-foreground ml-0 sm:ml-auto w-full sm:w-auto"
                   >
                     {copiedPostId === selectedPost.id ? (
                       <>
@@ -1067,7 +1067,7 @@ export default function Community() {
                       <div className="w-9 h-9 rounded-full gradient-hero flex items-center justify-center text-primary-foreground font-heading font-bold text-xs shrink-0 mt-1">
                         {user?.email?.[0].toUpperCase() || "Y"}
                       </div>
-                      <div className="flex-1 flex gap-2">
+                      <div className="flex-1 flex flex-col sm:flex-row gap-2">
                         <Textarea
                           placeholder={t("community.commentPlaceholder", "Share your thoughts...")}
                           rows={3}
@@ -1083,7 +1083,7 @@ export default function Community() {
                         <Button
                           onClick={handleAddComment}
                           disabled={addCommentMutation.isPending || !newComment.trim()}
-                          className="self-end gradient-warm text-secondary-foreground border-0 h-10"
+                          className="self-start sm:self-end w-full sm:w-auto gradient-warm text-secondary-foreground border-0 h-10"
                         >
                           {addCommentMutation.isPending ? "..." : t("community.actions.post", "Post")}
                         </Button>
@@ -1152,7 +1152,7 @@ export default function Community() {
 
       {/* Edit Post Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="w-full max-w-sm sm:max-w-lg mx-4">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-heading">{t("community.actions.editPost", "Edit Post")}</DialogTitle>
           </DialogHeader>
