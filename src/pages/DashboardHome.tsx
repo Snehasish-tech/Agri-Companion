@@ -2,7 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useDashboardNotifications } from "@/hooks/useDashboardNotifications";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Bot, CloudSun, TrendingUp, ShoppingCart, Warehouse, Handshake,
   Wheat, BarChart3, Sun, Wind, Droplets, CloudRain, GripVertical,
@@ -17,11 +19,63 @@ export default function DashboardHome() {
   const { notifications, loading: notificationsLoading, clearNotifications } = useDashboardNotifications(user?.id);
   const firstName = user?.full_name?.split(" ")[0] || "Farmer";
 
+  // Live data states
+  const [farmCount, setFarmCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
+  const [storageCount, setStorageCount] = useState(0);
+
+  // Fetch live data from Supabase
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let isMounted = true;
+
+    const fetchCounts = async () => {
+      try {
+        // Fetch farms count
+        const { count: farmsCount } = await supabase
+          .from("farms")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (isMounted) setFarmCount(farmsCount || 0);
+
+        // Fetch orders count
+        const { count: ordersCount } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (isMounted) setOrderCount(ordersCount || 0);
+
+        // Fetch storage bookings count
+        const { count: storageCount } = await supabase
+          .from("storage_bookings")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (isMounted) setStorageCount(storageCount || 0);
+      } catch (error) {
+        console.warn("Failed to fetch counts:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchCounts();
+
+    // Poll every 30 seconds, just like notifications (same as useDashboardNotifications)
+    const interval = setInterval(() => {
+      if (isMounted) fetchCounts();
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.id]);
+
   const quickStats = [
-    { labelKey: "dashboard.stats.activeFarms", value: "3", icon: Wheat, changeKey: "dashboard.stats.newFarms", color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-950/30" },
-    { labelKey: "dashboard.stats.activeOrders", value: "7", icon: ShoppingCart, changeKey: "dashboard.stats.pending", color: "text-blue-600", bgColor: "bg-blue-50 dark:bg-blue-950/30" },
-    { labelKey: "dashboard.stats.storageBookings", value: "2", icon: Warehouse, changeKey: "dashboard.stats.allActive", color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/30" },
-    { labelKey: "dashboard.stats.revenue", value: "₹1.2L", icon: BarChart3, changeKey: "dashboard.stats.thisMonth", color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/30" },
+    { labelKey: "dashboard.stats.activeFarms", value: farmCount.toString(), icon: Wheat, changeKey: "dashboard.stats.newFarms", color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-950/30" },
+    { labelKey: "dashboard.stats.activeOrders", value: orderCount.toString(), icon: ShoppingCart, changeKey: "dashboard.stats.pending", color: "text-blue-600", bgColor: "bg-blue-50 dark:bg-blue-950/30" },
+    { labelKey: "dashboard.stats.storageBookings", value: storageCount.toString(), icon: Warehouse, changeKey: "dashboard.stats.allActive", color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/30" },
+    { labelKey: "dashboard.stats.revenue", value: "₹0", icon: BarChart3, changeKey: "dashboard.stats.thisMonth", color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/30" },
   ];
 
   const quickActions = [
