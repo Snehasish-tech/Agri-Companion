@@ -291,8 +291,8 @@ export default function AIRecommendation() {
     if (!("geolocation" in navigator)) {
       update("autoDetect", false);
       toast({
-        title: "GPS not supported",
-        description: "Your browser does not support geolocation. Please enter location manually.",
+        title: t("aiRecommendation.location.gpsNotSupported"),
+        description: t("aiRecommendation.location.gpsNotSupportedDesc"),
         variant: "destructive",
       });
       return;
@@ -302,9 +302,9 @@ export default function AIRecommendation() {
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 300000,
+          enableHighAccuracy: false, // Set to false for better browser compatibility
+          timeout: 10000, // 10 seconds timeout
+          maximumAge: 0, // Always get fresh location
         });
       });
 
@@ -313,10 +313,18 @@ export default function AIRecommendation() {
       const fallbackLocation = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 
       let detectedLocation = fallbackLocation;
+      
+      // Try reverse geocoding with timeout
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for fetch
+        
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+          { signal: controller.signal }
         );
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const result = await response.json();
@@ -331,32 +339,33 @@ export default function AIRecommendation() {
             detectedLocation = `${state}, ${country}`;
           }
         }
-      } catch {
-        // Keep coordinate fallback when reverse geocoding fails.
+      } catch (fetchError: any) {
+        // If reverse geocoding fails, use coordinates as fallback
+        console.warn("Reverse geocoding failed:", fetchError?.message);
       }
 
       update("location", detectedLocation);
       toast({
-        title: "Location detected",
-        description: `Using ${detectedLocation} for recommendations.`,
+        title: t("aiRecommendation.location.detected"),
+        description: t("aiRecommendation.location.detectedUsingLocation", { location: detectedLocation }),
       });
     } catch (error) {
       update("autoDetect", false);
-      let message = "Could not detect your location. Please enter location manually.";
+      let message = t("aiRecommendation.location.unavailable");
 
       if (typeof error === "object" && error && "code" in error) {
         const geolocationError = error as GeolocationPositionError;
         if (geolocationError.code === 1) {
-          message = "Location permission denied. Please allow GPS access or enter location manually.";
+          message = t("aiRecommendation.location.permissionDenied");
         } else if (geolocationError.code === 2) {
-          message = "Location unavailable. Please check network/GPS and try again.";
+          message = t("aiRecommendation.location.unavailable");
         } else if (geolocationError.code === 3) {
-          message = "Location request timed out. Please try again or enter manually.";
+          message = t("aiRecommendation.location.timeout");
         }
       }
 
       toast({
-        title: "GPS detection failed",
+        title: t("aiRecommendation.location.unavailable"),
         description: message,
         variant: "destructive",
       });
