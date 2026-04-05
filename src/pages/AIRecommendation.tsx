@@ -136,11 +136,11 @@ const steps = [
 ];
 
 const loadingMessages = [
-  { text: "Analyzing soil conditions...", icon: FlaskConical },
-  { text: "Checking weather patterns...", icon: CloudRain },
-  { text: "Scanning market trends...", icon: TrendingUp },
-  { text: "Calculating ROI projections...", icon: BarChart3 },
-  { text: "Generating recommendations...", icon: Sparkles },
+  { text: "Analyzing soil type and crop compatibility...", icon: FlaskConical },
+  { text: "Processing water availability and irrigation...", icon: Droplets },
+  { text: "Reviewing seasonal crop suitability...", icon: Leaf },
+  { text: "Scanning market trends and pricing data...", icon: TrendingUp },
+  { text: "Generating optimal crop recommendations...", icon: Sparkles },
 ];
 
 const cropEmojiMap: Record<string, string> = {
@@ -377,21 +377,21 @@ export default function AIRecommendation() {
     setLoading(true);
     setLoadingIdx(0);
 
-    // Animate loading messages while waiting for AI
+    // Animate loading messages while simulating AI analysis of collected data
     const interval = setInterval(() => {
       setLoadingIdx((prev) => {
         if (prev >= loadingMessages.length - 1) { clearInterval(interval); return prev; }
         return prev + 1;
       });
-    }, 800);
+    }, 700);
 
     try {
       const data = {
         crops: getDemoCropRecommendations(form),
       };
 
-      // Keep a short delay so loading UI does not feel abrupt.
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Delay matches loading message count (5 messages × 700ms = 3500ms)
+      await new Promise((resolve) => setTimeout(resolve, 3600));
 
       clearInterval(interval);
       if (!data?.crops || !Array.isArray(data.crops)) throw new Error("Invalid response from AI");
