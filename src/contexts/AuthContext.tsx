@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [getFallbackName]);
 
-  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs = 3500): Promise<T> => {
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs = 8000): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -124,11 +124,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    
+    // Safety timeout - if auth check takes too long, stop loading
+    // This prevents users from being stuck on loading screen forever
+    const safetyTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn("Auth check safety timeout - stopping loading");
+        setLoading(false);
+      }
+    }, 10000);
 
     (async () => {
       try {
+        // First check if we have any auth token in localStorage (quick check)
+        const hasLocalToken = Object.keys(localStorage).some(
+          (key) => key.startsWith("sb-") && key.endsWith("-auth-token")
+        );
+        
         const { data } = await withTimeout(supabase.auth.getSession());
         if (!mounted) return;
+        clearTimeout(safetyTimeout);
 
         if (data.session?.user) {
           // Render quickly with fallback profile; hydrate full profile in background.
@@ -145,20 +160,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const mappedUser = await withTimeout(mapUser(data.session.user));
           if (mounted) setUser(mappedUser);
+        } else if (!hasLocalToken) {
+          // No session AND no local token = definitely not logged in
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+          }
+        } else {
+          // Has local token but no session - might be refreshing, wait for onAuthStateChange
+          // Don't set loading false yet, let onAuthStateChange handle it
+          console.log("Has local token but no session yet, waiting for auth state change...");
         }
-      } catch {
-        try {
-          // If refresh token is invalid/stale, clear local session state to prevent repeated auth errors.
-          await supabase.auth.signOut({ scope: "local" });
-        } catch {
-          // Ignore cleanup failures and continue with logged-out state.
-        }
-        if (mounted) {
-          setUser(null);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
+      } catch (err) {
+        // Only sign out if it's a definitive auth error (invalid refresh token)
+        // Don't sign out for network errors or timeouts
+        const errorMessage = err instanceof Error ? err.message.toLowerCase() : "";
+        const isAuthError = errorMessage.includes("invalid") || 
+                           errorMessage.includes("expired") || 
+                           errorMessage.includes("refresh_token");
+        
+        if (isAuthError) {
+          try {
+            // If refresh token is invalid/stale, clear local session state
+            await supabase.auth.signOut({ scope: "local" });
+          } catch {
+            // Ignore cleanup failures
+          }
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+          }
+        } else {
+          // For network/timeout errors, keep existing user state if any
+          // Just stop loading - user might still be logged in
+          console.warn("Auth check failed (might be network issue):", errorMessage);
+          if (mounted) {
+            setLoading(false);
+          }
         }
       }
     })();
@@ -179,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             return fallback;
           });
+          setLoading(false);  // User found, stop loading
 
           try {
             await withTimeout(ensureProfile(session.user));
@@ -190,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(mappedUser);
         } else {
           setUser(null);
+          setLoading(false);  // No user, stop loading
         }
       } catch {
         if (session?.user) {
@@ -203,14 +243,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             return fallback;
           });
+          setLoading(false);
         } else {
           setUser(null);
+          setLoading(false);
         }
       }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [ensureProfile, mapAuthUserFallback, mapUser, withTimeout]);

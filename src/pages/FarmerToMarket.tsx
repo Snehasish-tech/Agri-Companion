@@ -251,6 +251,12 @@ export default function FarmerToMarket() {
     toast.info(t("farmerMarket.toast.calling", "Initiating call to {{phone}}", { phone }));
   };
 
+  const handleMessage = (buyerName: string) => {
+    toast.info(t("farmerMarket.toast.messageSent", "Message feature coming soon!"), {
+      description: t("farmerMarket.toast.messageDescription", "You will be able to message {{name}} directly.", { name: buyerName }),
+    });
+  };
+
   const handleConnect = (buyer: Buyer) => {
     setConnectingBuyer(buyer);
     setConnectMessage(`Hello ${buyer.name}, I am interested in connecting with you regarding my recent produce listings.`);

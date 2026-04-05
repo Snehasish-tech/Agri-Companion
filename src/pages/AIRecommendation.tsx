@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { getDemoCropRecommendations } from "@/lib/demoData";
+import { getDemoCropRecommendations, getLocationProfile, CROP_PROFILES, getTranslatedCropName, CROP_TRANSLATIONS } from "@/lib/demoData";
 
 // ── Types ──
 interface FormData {
@@ -105,6 +105,9 @@ const soilTypes = [
   { id: "alkaline", label: "Alkaline", emoji: "⚪", desc: "High pH soil" },
   { id: "rocky", label: "Rocky", emoji: "🪨", desc: "Shallow & coarse" },
   { id: "silty", label: "Silty", emoji: "🌫️", desc: "Fine, smooth texture" },
+  { id: "mountain", label: "Mountain/Hilly", emoji: "⛰️", desc: "High elevation soil" },
+  { id: "acidic", label: "Acidic", emoji: "🍋", desc: "Low pH, tea-suitable" },
+  { id: "well-drained", label: "Well-Drained", emoji: "💧", desc: "Good drainage" },
 ];
 
 const waterOptions = [
@@ -186,7 +189,7 @@ const buildTimeline = (durationLabel: string) => {
   }));
 };
 
-const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string): CropResult => {
+const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string, language: string = "en"): CropResult => {
   if (item.name && item.desc && item.investment && item.roi && item.duration && item.water) {
     return {
       name: item.name,
@@ -217,6 +220,19 @@ const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string): Cr
 
   const cropName = (item.crop_name || "Recommended Crop").trim();
   const key = cropName.toLowerCase();
+  
+  // Try to find the crop key from translations
+  let cropKey = "";
+  for (const [k, trans] of Object.entries(CROP_TRANSLATIONS)) {
+    if (trans.en.toLowerCase() === key || key.includes(k)) {
+      cropKey = k;
+      break;
+    }
+  }
+  
+  // Get translated crop name
+  const translatedName = cropKey ? getTranslatedCropName(cropKey, language) : cropName;
+  
   const emoji = Object.entries(cropEmojiMap).find(([k]) => key.includes(k))?.[1] || "🌱";
   const estimatedCost = sanitizeNumber(item.estimated_cost, 15000);
   const roiValue = sanitizeNumber(item.expected_roi, 80);
@@ -230,8 +246,8 @@ const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string): Cr
   const difficulty = (item.difficulty_level || "medium").toLowerCase();
 
   return {
-    name: cropName,
-    nameHi: cropName,
+    name: translatedName,  // Use translated name
+    nameHi: translatedName,  // Use translated name
     emoji,
     score: Math.max(60, Math.min(98, Math.round(60 + roiValue * 0.35))),
     yield: difficulty === "hard" ? "Moderate to high (with management)" : "Stable yield potential",
@@ -242,7 +258,7 @@ const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string): Cr
     investment: toCurrencyLabel(estimatedCost),
     revenue: toCurrencyLabel(projectedRevenue),
     profit: toCurrencyLabel(projectedProfit),
-    desc: item.suitability_reason || `${cropName} is suitable for the given farm inputs and current season.`,
+    desc: item.suitability_reason || `${translatedName} is suitable for the given farm inputs and current season.`,
     tags: [
       `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`,
       `Water: ${water.charAt(0).toUpperCase() + water.slice(1)}`,
@@ -264,7 +280,8 @@ const mapApiCropToUiCrop = (item: CropRecommendationApiItem, season: string): Cr
 // ── Component ──
 export default function AIRecommendation() {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLanguage = i18n.language || "en";
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaultForm);
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -275,6 +292,15 @@ export default function AIRecommendation() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareList, setCompareList] = useState<number[]>([]);
   const [cropResults, setCropResults] = useState<CropResult[]>([]);
+  const [rawCropData, setRawCropData] = useState<CropRecommendationApiItem[]>([]);
+
+  // Re-translate crops when language changes
+  useEffect(() => {
+    if (rawCropData.length > 0 && showResults) {
+      const retranslated = rawCropData.map(item => mapApiCropToUiCrop(item, form.season, currentLanguage));
+      setCropResults(retranslated);
+    }
+  }, [currentLanguage, rawCropData, form.season, showResults]);
 
   const update = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -407,9 +433,10 @@ export default function AIRecommendation() {
       clearInterval(interval);
       if (!data?.crops || !Array.isArray(data.crops)) throw new Error("Invalid response from AI");
 
-      const mappedResults = (data.crops as CropRecommendationApiItem[])
-        .slice(0, 5)
-        .map((item) => mapApiCropToUiCrop(item, form.season));
+      const cropsSlice = (data.crops as CropRecommendationApiItem[]).slice(0, 5);
+      setRawCropData(cropsSlice);  // Save raw data for re-translation
+      
+      const mappedResults = cropsSlice.map((item) => mapApiCropToUiCrop(item, form.season, currentLanguage));
 
       if (mappedResults.length === 0) {
         throw new Error("No crop recommendations generated");
@@ -437,6 +464,7 @@ export default function AIRecommendation() {
     setCompareMode(false);
     setCompareList([]);
     setCropResults([]);
+    setRawCropData([]);
   };
 
   const toggleCompare = (idx: number) => {
@@ -1013,7 +1041,7 @@ function StepLocation({
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="e.g., Indore, Madhya Pradesh"
+            placeholder="e.g., Darjeeling, Murshidabad, Purulia"
             value={form.location}
             onChange={(e) => update("location", e.target.value)}
             maxLength={200}
