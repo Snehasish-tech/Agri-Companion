@@ -275,6 +275,15 @@ graph LR
 
 </div>
 
+## 🎥 Demo Video
+ 
+<div align="center">
+ 
+[![KrishiGrowAI Demo](https://img.youtube.com/vi/dq--e7mrNkM/maxresdefault.jpg)](https://youtu.be/dq--e7mrNkM)
+ **▶️ [Watch the Full Demo](https://youtu.be/dq--e7mrNkM)**
+ 
+</div>
+
 # 🚀 Getting Started :
 
 > Spin up **KrishiGrowAI** locally in minutes.
@@ -328,7 +337,7 @@ npm run dev
 ## 🌐 Access the Application :
 
 ```bash
-http://localhost:5173
+https://agri-companion.vercel.app/
 ```
 
 > You're ready to empower farmers. 🌾
