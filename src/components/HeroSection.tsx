@@ -204,9 +204,15 @@ export default function HeroSection() {
                 size="lg"
                 variant="outline"
                 className="border-background/20 text-background bg-background/5 backdrop-blur-md hover:bg-background/15 hover:text-background text-sm sm:text-base px-6 sm:px-8 h-11 sm:h-13 rounded-xl flex-1 sm:flex-none min-w-0"
+                asChild
               >
-                <Play className="mr-2 w-4 h-4" />
-                {t("hero.watchDemo")}
+                <a
+                  href="https://www.youtube.com/watch?v=dq--e7mrNkM"
+                  aria-label="Watch Agri Companion demo on YouTube"
+                >
+                  <Play className="mr-2 w-4 h-4" />
+                  {t("hero.watchDemo")}
+                </a>
               </Button>
             </motion.div>
 
