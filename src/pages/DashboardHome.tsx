@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getUserStorageBookings } from "@/lib/storageMarket";
 
 export default function DashboardHome() {
   const { t } = useTranslation();
@@ -48,13 +49,20 @@ export default function DashboardHome() {
         if (isMounted) setOrderCount(ordersCount || 0);
 
         // Fetch storage bookings count
-        const { count: storageCount } = await sb
+        const localStorageCount = getUserStorageBookings(user.id).length;
+        const { count: storageCount, error: storageError } = await sb
           .from("storage_bookings")
           .select("*", { count: "exact", head: true })
           .eq("user_id", user.id);
-        if (isMounted) setStorageCount(storageCount || 0);
+
+        if (isMounted) {
+          setStorageCount(storageError ? localStorageCount : (storageCount || localStorageCount));
+        }
       } catch (error) {
         console.warn("Failed to fetch counts:", error);
+        if (isMounted && user?.id) {
+          setStorageCount(getUserStorageBookings(user.id).length);
+        }
       }
     };
 

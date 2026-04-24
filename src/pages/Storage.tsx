@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import {
   Warehouse, Snowflake, ThermometerSun, MapPin, Star, IndianRupee,
   Search, Filter, Calendar, Phone, User, Package, ArrowRight,
@@ -20,6 +21,19 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import PaymentDialog from "@/components/PaymentDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  StorageBooking,
+  createStorageBooking,
+  createStorageListing,
+  estimateMonthlyCharge,
+  estimateProratedChargeNow,
+  generateStorageFacilities,
+  getBookingStatus,
+  getUserStorageBookings,
+  kgToQuintal,
+  onStorageMarketUpdated,
+} from "@/lib/storageMarket";
 
 type FacilityType = "cold" | "warehouse" | "silo" | "ca" | "frozen";
 
@@ -159,6 +173,8 @@ const ALL_STATES = ["All States", ...Array.from(new Set(facilities.map(f => f.st
 
 export default function Storage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("All States");
@@ -167,13 +183,34 @@ export default function Storage() {
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [inventoryBookings, setInventoryBookings] = useState<StorageBooking[]>([]);
+  const [sellingBooking, setSellingBooking] = useState<StorageBooking | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
+  const [sellForm, setSellForm] = useState({
+    quantityKg: "",
+    pricePerKg: "",
+    quality: "Standard",
+    category: "Vegetables",
+    description: "",
+  });
 
   const [bookingForm, setBookingForm] = useState({
     commodity: "", quantity: "", startDate: "", duration: "1",
     contactName: "", contactPhone: "",
   });
+
+  const facilities = useMemo<Facility[]>(() => generateStorageFacilities(120, 80), []);
+  const allStates = useMemo(
+    () => ["All States", ...Array.from(new Set(facilities.map((f) => f.state))).sort()],
+    [facilities]
+  );
+  const uiStats = useMemo(() => {
+    return [
+      { ...stats[0], value: `${facilities.length}+` },
+      ...stats.slice(1),
+    ];
+  }, [facilities.length]);
 
   const typeConfig = Object.entries(typeKeys).reduce((acc, [key, cfg]) => ({
     ...acc,
@@ -184,7 +221,7 @@ export default function Storage() {
   }), {} as Record<FacilityType, { label: string; icon: typeof Warehouse; color: string; bg: string }>);
 
   const bookingAmount = selectedFacility
-    ? selectedFacility.pricePerQuintal * Number(bookingForm.quantity || 0) * Number(bookingForm.duration)
+    ? selectedFacility.pricePerQuintal * (Number(bookingForm.quantity || 0) / 100) * Number(bookingForm.duration)
     : 0;
 
   const filtered = useMemo(() =>
@@ -210,6 +247,21 @@ export default function Storage() {
 
   const visibleFacilities = filtered.slice(0, visibleCount);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setInventoryBookings([]);
+      return;
+    }
+
+    const refresh = () => {
+      setInventoryBookings(getUserStorageBookings(user.id));
+    };
+
+    refresh();
+    const unsubscribe = onStorageMarketUpdated(refresh);
+    return unsubscribe;
+  }, [user?.id]);
+
   const handleBook = (facility: Facility) => {
     setSelectedFacility(facility);
     setBookingOpen(true);
@@ -230,10 +282,94 @@ export default function Storage() {
   };
 
   const handlePaymentSuccess = () => {
+    if (!user?.id || !selectedFacility) {
+      toast.error(t("storage.booking.loginRequired", { defaultValue: "Please sign in to book storage." }));
+      return;
+    }
+
+    const quantityKg = Number(bookingForm.quantity);
+    const quantityQuintal = quantityKg / 100;
+    const durationMonths = Number(bookingForm.duration);
+
+    const booking = createStorageBooking({
+      userId: user.id,
+      facilityId: selectedFacility.id,
+      facilityName: selectedFacility.name,
+      facilityLocation: selectedFacility.location,
+      facilityState: selectedFacility.state,
+      commodity: bookingForm.commodity,
+      bookedQuintal: quantityQuintal,
+      startDate: bookingForm.startDate,
+      durationMonths,
+      pricePerQuintal: selectedFacility.pricePerQuintal,
+      contactName: bookingForm.contactName,
+      contactPhone: bookingForm.contactPhone,
+    });
+
+    setInventoryBookings(getUserStorageBookings(user.id));
     toast.success(t("storage.booking.confirmed", { defaultValue: "Booking confirmed" }) + ` ${selectedFacility?.name}!`, {
-      description: `${bookingForm.quantity} ${t("storage.booking.quintals", { defaultValue: "quintals" })} ${t("storage.booking.of", { defaultValue: "of" })} ${bookingForm.commodity} ${t("storage.booking.starting", { defaultValue: "starting" })} ${bookingForm.startDate}`,
+      description: `${bookingForm.quantity} ${t("storage.booking.kg", { defaultValue: "kg" })} (${quantityQuintal.toFixed(2)} qtl) ${t("storage.booking.of", { defaultValue: "of" })} ${bookingForm.commodity} ${t("storage.booking.starting", { defaultValue: "starting" })} ${bookingForm.startDate} • ${booking.id}`,
     });
     setBookingForm({ commodity: "", quantity: "", startDate: "", duration: "1", contactName: "", contactPhone: "" });
+  };
+
+  const handleOpenSellDialog = (booking: StorageBooking) => {
+    const bookingStatus = getBookingStatus(booking);
+
+    if (bookingStatus !== "active") {
+      toast.error(t("storage.inventory.bookingExpired", { defaultValue: "This booking is not active for creating new listings." }));
+      return;
+    }
+
+    setSellingBooking(booking);
+    setSellForm({
+      quantityKg: "",
+      pricePerKg: (booking.pricePerQuintal / 100).toFixed(2),
+      quality: "Standard",
+      category: "Vegetables",
+      description: "",
+    });
+  };
+
+  const handleCreateListingFromStorage = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user?.id || !sellingBooking) {
+      toast.error(t("storage.inventory.loginRequired", { defaultValue: "Please sign in first." }));
+      return;
+    }
+
+    const quantityKg = Number(sellForm.quantityKg);
+    const pricePerKg = Number(sellForm.pricePerKg);
+
+    if (!quantityKg || quantityKg <= 0 || !pricePerKg || pricePerKg <= 0) {
+      toast.error(t("storage.inventory.validSellInput", { defaultValue: "Enter a valid quantity and price." }));
+      return;
+    }
+
+    if (quantityKg > sellingBooking.remainingKg) {
+      toast.error(t("storage.inventory.exceedsRemaining", { defaultValue: "Selected quantity exceeds remaining inventory." }));
+      return;
+    }
+
+    try {
+      createStorageListing({
+        userId: user.id,
+        storageBookingId: sellingBooking.id,
+        quantityKg,
+        pricePerKg,
+        quality: sellForm.quality,
+        category: sellForm.category,
+        description: sellForm.description,
+      });
+
+      setInventoryBookings(getUserStorageBookings(user.id));
+      toast.success(t("storage.inventory.listingCreated", { defaultValue: "Listing created from storage inventory." }));
+      setSellingBooking(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("storage.inventory.listingFailed", { defaultValue: "Could not create listing." });
+      toast.error(message);
+    }
   };
 
   return (
@@ -269,7 +405,7 @@ export default function Storage() {
         transition={{ delay: 0.1 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        {stats.map((stat) => (
+        {uiStats.map((stat) => (
           <div
             key={stat.label}
             className="glass-card rounded-xl p-4 text-center hover:shadow-[var(--shadow-hover)] transition-all"
@@ -280,6 +416,97 @@ export default function Storage() {
           </div>
         ))}
       </motion.div>
+
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-heading font-semibold text-foreground">{t("storage.inventory.title", { defaultValue: "My Stored Inventory" })}</h2>
+            <p className="text-sm text-muted-foreground">{t("storage.inventory.subtitle", { defaultValue: "Track booked stock and sell directly from storage." })}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/sell")}>{t("storage.inventory.viewListings", { defaultValue: "View My Listings" })}</Button>
+        </div>
+
+        {inventoryBookings.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm">
+            {t("storage.inventory.empty", { defaultValue: "No storage bookings yet. Book a facility to start selling from storage." })}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {inventoryBookings.map((booking) => {
+              const bookingStatus = getBookingStatus(booking);
+              const monthlyCharge = estimateMonthlyCharge(booking);
+              const proratedCharge = estimateProratedChargeNow(booking);
+
+              return (
+                <div key={booking.id} className="rounded-xl border bg-card p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-heading font-semibold text-foreground">{booking.commodity}</p>
+                      <p className="text-xs text-muted-foreground">{booking.facilityName}</p>
+                    </div>
+                    <Badge variant={bookingStatus === "active" ? "default" : bookingStatus === "depleted" ? "secondary" : "outline"}>
+                      {bookingStatus === "active"
+                        ? t("storage.inventory.active", { defaultValue: "Active" })
+                        : bookingStatus === "depleted"
+                          ? t("storage.inventory.depleted", { defaultValue: "Fully Listed" })
+                          : t("storage.inventory.expired", { defaultValue: "Expired" })}
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {booking.facilityLocation}, {booking.facilityState}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-lg bg-muted p-2">
+                      <p className="text-muted-foreground">{t("storage.inventory.booked", { defaultValue: "Booked" })}</p>
+                      <p className="font-semibold text-foreground">{booking.bookedKg} kg</p>
+                      <p className="text-[10px] text-muted-foreground">{kgToQuintal(booking.bookedKg).toFixed(2)} qtl</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-2">
+                      <p className="text-muted-foreground">{t("storage.inventory.listed", { defaultValue: "Listed" })}</p>
+                      <p className="font-semibold text-foreground">{booking.soldKg} kg</p>
+                      <p className="text-[10px] text-muted-foreground">{kgToQuintal(booking.soldKg).toFixed(2)} qtl</p>
+                    </div>
+                    <div className="rounded-lg bg-muted p-2">
+                      <p className="text-muted-foreground">{t("storage.inventory.remaining", { defaultValue: "Remaining" })}</p>
+                      <p className="font-semibold text-foreground">{booking.remainingKg} kg</p>
+                      <p className="text-[10px] text-muted-foreground">{kgToQuintal(booking.remainingKg).toFixed(2)} qtl</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border p-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("storage.inventory.duration", { defaultValue: "Duration" })}</span>
+                      <span className="text-foreground font-medium">{booking.durationMonths} {t("storage.booking.months", { defaultValue: "Months" })}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("storage.inventory.expires", { defaultValue: "Expires" })}</span>
+                      <span className="text-foreground font-medium">{booking.expiresAt}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("storage.inventory.monthly", { defaultValue: "Monthly (Remaining)" })}</span>
+                      <span className="text-foreground font-medium">₹{monthlyCharge.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("storage.inventory.proratedNow", { defaultValue: "Prorated Now" })}</span>
+                      <span className="text-foreground font-medium">₹{proratedCharge.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    onClick={() => handleOpenSellDialog(booking)}
+                    disabled={bookingStatus !== "active" || booking.remainingKg <= 0}
+                  >
+                    {t("storage.inventory.sellFromStorage", { defaultValue: "Sell From Storage" })}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Type Quick Filters */}
       <motion.div
@@ -359,7 +586,7 @@ export default function Storage() {
                   <SelectValue placeholder={t("storage.filters.state", { defaultValue: "State" })} />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_STATES.map((s) => (
+                  {allStates.map((s) => (
                     <SelectItem key={s} value={s}>{s === "All States" ? t("storage.allStates", { defaultValue: "All States" }) : s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -622,8 +849,8 @@ export default function Storage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">{t("storage.booking.quantity", { defaultValue: "Quantity (Quintals)" })} *</label>
-                <Input type="number" placeholder={t("storage.booking.quantityPlaceholder", { defaultValue: "e.g. 100" })} value={bookingForm.quantity} onChange={(e) => setBookingForm({ ...bookingForm, quantity: e.target.value })} min="1" max="100000" />
+                <label className="text-sm font-medium text-foreground">{t("storage.booking.quantityKg", { defaultValue: "Quantity (kg)" })} *</label>
+                <Input type="number" placeholder={t("storage.booking.quantityKgPlaceholder", { defaultValue: "e.g. 1000" })} value={bookingForm.quantity} onChange={(e) => setBookingForm({ ...bookingForm, quantity: e.target.value })} min="1" max="1000000" />
               </div>
             </div>
 
@@ -674,7 +901,7 @@ export default function Storage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{t("storage.booking.quantityDuration", { defaultValue: "Quantity × Duration" })}</span>
-                  <span className="font-mono text-foreground">{bookingForm.quantity || 0} qtl × {bookingForm.duration} mo</span>
+                  <span className="font-mono text-foreground">{bookingForm.quantity || 0} kg ({(Number(bookingForm.quantity || 0) / 100).toFixed(2)} qtl) × {bookingForm.duration} mo</span>
                 </div>
                 <div className="border-t border-border pt-2 flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground">{t("storage.booking.totalAmount", { defaultValue: "Total Amount" })}</span>
@@ -686,6 +913,98 @@ export default function Storage() {
             <Button type="submit" className="w-full gradient-warm text-secondary-foreground border-0 hover:opacity-90 h-11">
               <CreditCard className="w-4 h-4 mr-2" /> {t("storage.booking.proceedToPayment", { defaultValue: "Proceed to Payment" })}
             </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!sellingBooking}
+        onOpenChange={(open) => {
+          if (!open) setSellingBooking(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("storage.inventory.sellFromStorage", { defaultValue: "Sell From Storage" })}</DialogTitle>
+            <DialogDescription>
+              {sellingBooking && `${sellingBooking.commodity} • ${sellingBooking.facilityName} • ${sellingBooking.remainingKg} kg ${t("storage.inventory.remaining", { defaultValue: "remaining" })}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateListingFromStorage} className="space-y-4 mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t("storage.inventory.sellQtyKg", { defaultValue: "Sell Quantity (kg)" })}</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={sellingBooking?.remainingKg ?? 0}
+                  placeholder="e.g. 20"
+                  value={sellForm.quantityKg}
+                  onChange={(e) => setSellForm({ ...sellForm, quantityKg: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t("storage.inventory.pricePerKg", { defaultValue: "Price per kg (₹)" })}</label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 30"
+                  value={sellForm.pricePerKg}
+                  onChange={(e) => setSellForm({ ...sellForm, pricePerKg: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t("storage.inventory.category", { defaultValue: "Category" })}</label>
+                <Select value={sellForm.category} onValueChange={(v) => setSellForm({ ...sellForm, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Grains">Grains</SelectItem>
+                    <SelectItem value="Vegetables">Vegetables</SelectItem>
+                    <SelectItem value="Fruits">Fruits</SelectItem>
+                    <SelectItem value="Spices">Spices</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">{t("storage.inventory.quality", { defaultValue: "Quality" })}</label>
+                <Select value={sellForm.quality} onValueChange={(v) => setSellForm({ ...sellForm, quality: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Standard">Standard</SelectItem>
+                    <SelectItem value="Grade A">Grade A</SelectItem>
+                    <SelectItem value="Premium">Premium</SelectItem>
+                    <SelectItem value="Export">Export</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">{t("storage.inventory.note", { defaultValue: "Description (optional)" })}</label>
+              <Input
+                placeholder={t("storage.inventory.notePlaceholder", { defaultValue: "Add details for buyers..." })}
+                value={sellForm.description}
+                onChange={(e) => setSellForm({ ...sellForm, description: e.target.value })}
+              />
+            </div>
+
+            {sellForm.quantityKg && (
+              <div className="text-xs rounded-lg bg-muted p-3 space-y-1">
+                <p className="text-muted-foreground">{t("storage.inventory.quickSummary", { defaultValue: "Quick Summary" })}</p>
+                <p className="text-foreground font-medium">
+                  {sellForm.quantityKg} kg ({kgToQuintal(Number(sellForm.quantityKg || 0)).toFixed(2)} qtl)
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setSellingBooking(null)}>{t("common.cancel", { defaultValue: "Cancel" })}</Button>
+              <Button type="submit">{t("storage.inventory.createListing", { defaultValue: "Create Listing" })}</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
