@@ -25,8 +25,6 @@
 
 **Millions of Indian farmers are drowning in a crisis they didn't create.**
 
-<div align="center">
-
 ```mermaid
 flowchart TB
     A[👨‍🌾 Indian Farmer]
@@ -50,8 +48,6 @@ flowchart TB
 
     B1 --> X[❌ Declining Farm Income]
     C1 --> X
-    D1 --> X
-    E1 --> X
     F1 --> X
 ```
 
