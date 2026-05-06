@@ -2,6 +2,7 @@
 
 <div align="center">
 <a href="https://github.com/your-username/krishigrow">
+  
   <img src="https://readme-typing-svg.demolab.com?font=Space+Grotesk&weight=700&size=35&duration=2500&pause=800&color=059669&center=true&vCenter=true&width=1000&height=100&lines=Welcome+to+KrishiGrow+AI;Smart+Farming+Powered+by+Gemini;Real-time+Weather+%26+Market+Insights;Your+Complete+Agri-Tech+Solution;Every+field+has+a+story." alt="KrishiGrowAI Professional" />
 </a>
 </div>
@@ -16,13 +17,7 @@
   <a href="https://vercel.com"><img src="https://img.shields.io/badge/Deployed_on-Vercel-000?style=for-the-badge&logo=vercel" alt="Vercel"></a>
 </p>
 
-## 🎥 Demo Video
- 
-<div align="center">
- 
-[![KrishiGrowAI Demo](https://img.youtube.com/vi/dq--e7mrNkM/maxresdefault.jpg)](https://youtu.be/PhWjIH4LfjI)
- 
-**▶️ [Watch the Full Demo on YouTube](https://youtu.be/PhWjIH4LfjI)**
+  <img width="1917" height="909" alt="Screenshot 2026-03-07 203443" src="https://github.com/user-attachments/assets/84466312-6a19-46a7-9b83-3d5093c5080a" />
  
 </div>
 
